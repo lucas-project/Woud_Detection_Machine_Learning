@@ -3,7 +3,6 @@ import os
 import cv2
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
-
 import tensorflow as tf
 from tensorflow import keras
 from keras.models import Model
@@ -14,49 +13,62 @@ import json
 from PIL import Image
 import requests
 from io import BytesIO
+import random
 
 with open('C:/Users/User/Desktop/ml/export-2023-03-22T23_32_10.505Z.json', 'r') as file:
     labelbox_data = json.load(file)
 
-import cv2
-import numpy as np
-import os
 
-def create_mask_images(labelbox_data, output_folder):
-    for item in labelbox_data:
-        for annotation in item['Label']['objects']:
-            mask_url = annotation['instanceURI']
-            response = requests.get(mask_url)
-            mask = cv2.imdecode(np.asarray(bytearray(response.content), dtype=np.uint8), cv2.IMREAD_GRAYSCALE)
 
-            mask_filename = f"{os.path.splitext(item['External ID'])[0]}_mask.png"
-            cv2.imwrite(os.path.join(output_folder, mask_filename), mask)
 
-output_folder = r'C:\\Users\\User\\Desktop\\ml\\masking'
-create_mask_images(labelbox_data, output_folder)
-
-# Load and preprocess the images and masks:
-
-import numpy as np
-import os
-import cv2
-
-def load_images(image_path, mask_path, image_size):
-    images = []
-    masks = []
+def load_images_filepaths(image_path, mask_path):
+    filepaths = []
 
     for file in os.listdir(image_path):
-        image = cv2.imread(os.path.join(image_path, file), cv2.IMREAD_GRAYSCALE)
+        image_file = os.path.join(image_path, file)
         mask_file = os.path.join(mask_path, os.path.splitext(file)[0] + "_mask.png")
         
         if not os.path.exists(mask_file):
             print(f"Mask file not found: {mask_file}")
             continue
         
+        filepaths.append((image_file, mask_file))
+
+    return filepaths
+
+image_size = (256, 256)
+image_path = "C:\\Users\\User\\Desktop\\ml\\dataset"
+mask_path = "C:\\Users\\User\\Desktop\\ml\\masking"
+
+# Call the updated function to get the filepaths
+filepaths = load_images_filepaths(image_path, mask_path)
+
+# Shuffle the filepaths
+random.shuffle(filepaths)
+
+# Split ratio for validation set (20% validation)
+validation_split = 0.2
+split_index = int(len(filepaths) * validation_split)
+
+# Split the data into training and validation sets
+validation_data = filepaths[:split_index]
+training_data = filepaths[split_index:]
+
+# Print the length of the training and validation sets
+print("Training set size:", len(training_data))
+print("Validation set size:", len(validation_data))
+
+# Now, modify the load_images function to accept the list of filepaths and load the corresponding images and masks
+def load_images(filepaths, image_size):
+    images = []
+    masks = []
+
+    for image_file, mask_file in filepaths:
+        image = cv2.imread(image_file, cv2.IMREAD_GRAYSCALE)
         mask = cv2.imread(mask_file, cv2.IMREAD_GRAYSCALE)
 
         if image is None:
-            print(f"Failed to read image file: {os.path.join(image_path, file)}")
+            print(f"Failed to read image file: {image_file}")
             continue
         
         if mask is None:
@@ -77,17 +89,25 @@ def load_images(image_path, mask_path, image_size):
 
     return images, masks
 
+# Load the training and validation images and masks
+X_train, y_train = load_images(training_data, image_size)
+X_test, y_test = load_images(validation_data, image_size)
 
-image_size = (256, 256)
-image_path = "C:\\Users\\User\\Desktop\\ml\\dataset"
-mask_path = "C:\\Users\\User\\Desktop\\ml\\masking"
+print("X_train shape:", X_train.shape)
+print("y_train shape:", y_train.shape)
 
-images, masks = load_images(image_path, mask_path, image_size)
+
+
+
+#images, masks = load_images(image_path, mask_path, image_size)
 
 # Split the dataset into training and testing sets:
 # X_train, X_test, y_train, y_test = train_test_split(images, masks, test_size=0.2, random_state=42)
-X_train, y_train = images, masks
-X_test, y_test = images, masks
+# X_train, y_train = images, masks
+# X_test, y_test = images, masks
+print("X_train shape:", X_train.shape)
+print("y_train shape:", y_train.shape)
+
 
 # Define the U-Net model architecture:
 def unet_model(input_size):
@@ -151,28 +171,13 @@ epochs = 50
 checkpoint = ModelCheckpoint('model.h5', monitor='val_loss', verbose=1, save_best_only=True, mode='min')
 reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=5, min_lr=1e-6, verbose=1, mode='min')
 
-history = model.fit(X_train, y_train, validation_split=0, batch_size=batch_size, epochs=epochs, callbacks=[checkpoint, reduce_lr])
+history = model.fit(X_train, y_train, validation_split=0.2, batch_size=batch_size, epochs=epochs, callbacks=[checkpoint, reduce_lr])
 
 
-# Visualize the training progress:
-# plt.figure(figsize=(12, 5))
-# plt.plot(history.history['accuracy'], label='Training Accuracy')
-# plt.plot(history.history['val_accuracy'], label='Validation Accuracy')
-# plt.xlabel('Epochs')
-# plt.ylabel('Accuracy')
-# plt.legend()
-# plt.show()
-
-# plt.figure(figsize=(12, 5))
-# plt.plot(history.history['loss'], label='Training Loss')
-# plt.plot(history.history['val_loss'], label='Validation Loss')
-# plt.xlabel('Epochs')
-# plt.ylabel('Loss')
-# plt.legend()
-# plt.show()
 # Visualize the training progress:
 plt.figure(figsize=(12, 5))
 plt.plot(history.history['accuracy'], label='Training Accuracy')
+plt.plot(history.history['val_accuracy'], label='Validation Accuracy')
 plt.xlabel('Epochs')
 plt.ylabel('Accuracy')
 plt.legend()
@@ -180,10 +185,29 @@ plt.show()
 
 plt.figure(figsize=(12, 5))
 plt.plot(history.history['loss'], label='Training Loss')
+plt.plot(history.history['val_loss'], label='Validation Loss')
 plt.xlabel('Epochs')
 plt.ylabel('Loss')
 plt.legend()
 plt.show()
+
+
+# Visualize the training progress:
+
+
+# plt.figure(figsize=(12, 5))
+# plt.plot(history.history['accuracy'], label='Training Accuracy')
+# plt.xlabel('Epochs')
+# plt.ylabel('Accuracy')
+# plt.legend()
+# plt.show()
+
+# plt.figure(figsize=(12, 5))
+# plt.plot(history.history['loss'], label='Training Loss')
+# plt.xlabel('Epochs')
+# plt.ylabel('Loss')
+# plt.legend()
+# plt.show()
 
 
 # Load the best model and evaluate on the test set:

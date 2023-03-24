@@ -52,7 +52,7 @@ class WoundDataset(Dataset):
 
         return image_tensor, mask_tensor
 
-image_folder = "C:\\Users\\User\\Desktop\\dataset"
+image_folder = "C:\\Users\\User\\Desktop\\ml\\dataset"
 dataset = WoundDataset(image_folder)
 dataloader = DataLoader(dataset, batch_size=32, shuffle=True)
 
