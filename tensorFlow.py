@@ -15,8 +15,8 @@ import requests
 from io import BytesIO
 import random
 
-with open('C:/Users/User/Desktop/ml/export-2023-03-22T23_32_10.505Z.json', 'r') as file:
-    labelbox_data = json.load(file)
+# with open('C:/Users/User/Desktop/ml/export-2023-03-22T23_32_10.505Z.json', 'r') as file:
+#     labelbox_data = json.load(file)
 
 
 
