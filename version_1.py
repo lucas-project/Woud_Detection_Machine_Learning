@@ -45,10 +45,11 @@ X, y = load_images_and_masks(images_path, masks_path)
 X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
 
 # Data augmentation
-data_gen_args = dict(rotation_range=20, width_shift_range=0.1, height_shift_range=0.1,
-                     shear_range=0.1, zoom_range=0.1, horizontal_flip=True, fill_mode='nearest')
+data_gen_args = dict(rotation_range=10, width_shift_range=0.05, height_shift_range=0.05,
+                     shear_range=0.05, zoom_range=0.05, horizontal_flip=True, fill_mode='nearest')
 image_datagen = ImageDataGenerator(**data_gen_args)
 mask_datagen = ImageDataGenerator(**data_gen_args)
+
 
 image_datagen.fit(X_train, augment=True, seed=42)
 mask_datagen.fit(y_train, augment=True, seed=42)
@@ -57,42 +58,21 @@ mask_datagen.fit(y_train, augment=True, seed=42)
 def build_unet(input_shape=(128, 128, 3)):
     inputs = tf.keras.Input(input_shape)
 
-    conv1 = Conv2D(64, (3, 3), activation='relu', padding='same')(inputs)
-    conv1 = Conv2D(64, (3, 3), activation='relu', padding='same')(conv1)
+    conv1 = Conv2D(32, (3, 3), activation='relu', padding='same')(inputs)
     pool1 = MaxPooling2D(pool_size=(2, 2))(conv1)
 
-    conv2 = Conv2D(128, (3, 3), activation='relu', padding='same')(pool1)
-    conv2 = Conv2D(128, (3, 3), activation='relu', padding='same')(conv2)
+    conv2 = Conv2D(64, (3, 3), activation='relu', padding='same')(pool1)
     pool2 = MaxPooling2D(pool_size=(2, 2))(conv2)
 
-    conv3 = Conv2D(256, (3, 3), activation='relu', padding='same')(pool2)
-    conv3 = Conv2D(256, (3, 3), activation='relu', padding='same')(conv3)
-    pool3 = MaxPooling2D(pool_size=(2, 2))(conv3)
+    conv3 = Conv2D(128, (3, 3), activation='relu', padding='same')(pool2)
 
-    conv4 = Conv2D(512, (3, 3), activation='relu', padding='same')(pool3)
-    conv4 = Conv2D(512, (3, 3), activation='relu', padding='same')(conv4)
-    pool4 = MaxPooling2D(pool_size=(2, 2))(conv4)
+    up4 = Concatenate()([UpSampling2D(size=(2, 2))(conv3), conv2])
+    conv4 = Conv2D(64, (3, 3), activation='relu', padding='same')(up4)
 
-    conv5 = Conv2D(1024, (3, 3), activation='relu', padding='same')(pool4)
-    conv5 = Conv2D(1024, (3, 3), activation='relu', padding='same')(conv5)
+    up5 = Concatenate()([UpSampling2D(size=(2, 2))(conv4), conv1])
+    conv5 = Conv2D(32, (3, 3), activation='relu', padding='same')(up5)
 
-    up6 = Concatenate()([UpSampling2D(size=(2, 2))(conv5), conv4])
-    conv6 = Conv2D(512, (3, 3), activation='relu', padding='same')(up6)
-    conv6 = Conv2D(512, (3, 3), activation='relu', padding='same')(conv6)
-
-    up7 = Concatenate()([UpSampling2D(size=(2, 2))(conv6), conv3])
-    conv7 = Conv2D(256, (3, 3), activation='relu', padding='same')(up7)
-    conv7 = Conv2D(256, (3, 3), activation='relu', padding='same')(conv7)
-
-    up8 = Concatenate()([UpSampling2D(size=(2, 2))(conv7), conv2])
-    conv8 = Conv2D(128, (3, 3), activation='relu', padding='same')(up8)
-    conv8 = Conv2D(128, (3, 3), activation='relu', padding='same')(conv8)
-
-    up9 = Concatenate()([UpSampling2D(size=(2, 2))(conv8), conv1])
-    conv9 = Conv2D(64, (3, 3), activation='relu', padding='same')(up9)
-    conv9 = Conv2D(64, (3, 3), activation='relu', padding='same')(conv9)
-
-    output = Conv2D(1, (1, 1), activation='sigmoid')(conv9)
+    output = Conv2D(1, (1, 1), activation='sigmoid')(conv5)
 
     return tf.keras.Model(inputs=inputs, outputs=output)
 
