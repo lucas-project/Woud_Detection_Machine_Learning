@@ -3,6 +3,9 @@ import json
 import numpy as np
 import cv2
 import tensorflow as tf
+import requests
+from PIL import Image
+from io import BytesIO
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Conv2D, MaxPooling2D, UpSampling2D, Concatenate, Activation
@@ -22,20 +25,57 @@ def load_images_and_masks(images_path, masks_path):
     masks = []
 
     for file in os.listdir(images_path):
-        image = cv2.imread(os.path.join(images_path, file))
-        image = cv2.resize(image, (256, 256))
-        images.append(image)
-
-        mask_path = os.path.join(masks_path, file.replace('.jpg', '.json'))
-        with open(mask_path, 'r') as f:
+        # Load corresponding mask
+        with open(os.path.join(masks_path, file[:-4] + '.json')) as f:
             mask_json = json.load(f)
-        mask = np.zeros((256, 256))
-        if mask_json['_via_img_metadata'][file + str(os.path.getsize(os.path.join(images_path, file)))]['regions']:
-            points = mask_json['_via_img_metadata'][file + str(os.path.getsize(os.path.join(images_path, file)))]['regions'][0]['shape_attributes']['all_points_x_y']
-            cv2.fillPoly(mask, np.array([points], dtype=np.int32), 1)
-        masks.append(np.expand_dims(mask, axis=-1))
 
-    return np.array(images), np.array(masks)
+        if 'Label' in mask_json:
+            # Load image
+            image = cv2.imread(os.path.join(images_path, file), cv2.IMREAD_COLOR)
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            image = cv2.resize(image, (256, 256))
+            images.append(image)
+
+            polygon = mask_json['Label']['objects'][0]['instanceURI']
+            response = requests.get(polygon)
+            mask = np.array(Image.open(BytesIO(response.content)).convert('L'))
+            mask = cv2.resize(mask, (256, 256))
+            mask = np.expand_dims(mask, axis=-1)  # Convert to (256, 256, 1) shape
+            mask = mask / 255.0  # Scale mask values between 0 and 1
+        else:
+            key = file + str(os.stat(os.path.join(images_path, file)).st_size)
+            regions = mask_json['_via_img_metadata'][key]['regions']
+            
+            if len(regions) > 0:
+                # Load image
+                image = cv2.imread(os.path.join(images_path, file), cv2.IMREAD_COLOR)
+                image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+                image = cv2.resize(image, (256, 256))
+                images.append(image)
+
+                points = regions[0]['shape_attributes']['all_points_x_y']
+                mask = np.zeros((256, 256), dtype=np.uint8)
+                cv2.fillPoly(mask, [np.array(points, np.int32).reshape((-1, 1, 2))], 255)
+                mask = np.expand_dims(mask, axis=-1)  # Convert to (256, 256, 1) shape
+            else:
+                print(f"No regions found for {file}. Skipping...")
+                continue
+
+        masks.append(mask)
+
+    return np.array(images, dtype=object), np.array(masks, dtype=object)
+
+
+def dice_coefficient(y_true, y_pred):
+    y_true_f = tf.cast(tf.reshape(y_true, [-1]), tf.float32)
+    y_pred_f = tf.cast(tf.reshape(y_pred, [-1]), tf.float32)
+    intersection = tf.reduce_sum(y_true_f * y_pred_f)
+    return (2. * intersection + 1.) / (tf.reduce_sum(y_true_f) + tf.reduce_sum(y_pred_f) + 1.)
+
+
+
+
+
 
 
 
@@ -45,8 +85,17 @@ X, y = load_images_and_masks(images_path, masks_path)
 X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
 
 # Data augmentation
-data_gen_args = dict(rotation_range=10, width_shift_range=0.05, height_shift_range=0.05,
-                     shear_range=0.05, zoom_range=0.05, horizontal_flip=True, fill_mode='nearest')
+# data_gen_args = dict(rotation_range=10, width_shift_range=0.05, height_shift_range=0.05,
+#                      shear_range=0.05, zoom_range=0.05, horizontal_flip=True, fill_mode='nearest')
+data_gen_args = dict(rotation_range=20,  # Increase rotation range
+                     width_shift_range=0.1,  # Increase width shift range
+                     height_shift_range=0.1,  # Increase height shift range
+                     shear_range=0.1,  # Increase shear range
+                     zoom_range=0.1,  # Increase zoom range
+                     brightness_range=(0.9, 1.1),
+                     horizontal_flip=True,
+                     vertical_flip=True,  # Add vertical flipping
+                     fill_mode='nearest')
 image_datagen = ImageDataGenerator(**data_gen_args)
 mask_datagen = ImageDataGenerator(**data_gen_args)
 
@@ -68,26 +117,34 @@ def build_unet(input_shape=(256, 256, 3)):
     pool3 = MaxPooling2D(pool_size=(2, 2))(conv3)
 
     conv4 = Conv2D(256, (3, 3), activation='relu', padding='same')(pool3)
+    pool4 = MaxPooling2D(pool_size=(2, 2))(conv4)
 
-    up5 = Concatenate()([UpSampling2D(size=(2, 2))(conv4), conv3])
-    conv5 = Conv2D(128, (3, 3), activation='relu', padding='same')(up5)
+    conv5 = Conv2D(512, (3, 3), activation='relu', padding='same')(pool4)
 
-    up6 = Concatenate()([UpSampling2D(size=(2, 2))(conv5), conv2])
-    conv6 = Conv2D(64, (3, 3), activation='relu', padding='same')(up6)
+    up6 = Concatenate()([UpSampling2D(size=(2, 2))(conv5), conv4])
+    conv6 = Conv2D(256, (3, 3), activation='relu', padding='same')(up6)
 
-    up7 = Concatenate()([UpSampling2D(size=(2, 2))(conv6), conv1])
-    conv7 = Conv2D(32, (3, 3), activation='relu', padding='same')(up7)
+    up7 = Concatenate()([UpSampling2D(size=(2, 2))(conv6), conv3])
+    conv7 = Conv2D(128, (3, 3), activation='relu', padding='same')(up7)
 
-    output = Conv2D(1, (1, 1), activation='sigmoid')(conv7)
+    up8 = Concatenate()([UpSampling2D(size=(2, 2))(conv7), conv2])
+    conv8 = Conv2D(64, (3, 3), activation='relu', padding='same')(up8)
+
+    up9 = Concatenate()([UpSampling2D(size=(2, 2))(conv8), conv1])
+    conv9 = Conv2D(32, (3, 3), activation='relu', padding='same')(up9)
+
+    output = Conv2D(1, (1, 1), activation='sigmoid')(conv9)
 
     return tf.keras.Model(inputs=inputs, outputs=output)
+
 
 
 
 model = build_unet()
 
 # Compile the model
-model.compile(optimizer=Adam(), loss=BinaryCrossentropy(), metrics=[MeanIoU(num_classes=2)])
+model.compile(optimizer=Adam(), loss=BinaryCrossentropy(), metrics=[dice_coefficient])
+
 
 # Train the model
 train_generator = zip(image_datagen.flow(X_train, batch_size=len(X_train), seed=42),
@@ -98,6 +155,8 @@ val_generator = zip(image_datagen.flow(X_val, batch_size=len(X_val), seed=42),
 
 model.fit(train_generator, steps_per_epoch=len(X_train) // 2, validation_data=val_generator,
           validation_steps=len(X_val), epochs=50)
+
+
 
 # Evaluate the model's performance on the evaluation set
 def load_evaluation_images(evaluation_path):
