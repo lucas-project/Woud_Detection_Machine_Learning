@@ -23,13 +23,13 @@ def load_images_and_masks(images_path, masks_path):
 
     for file in os.listdir(images_path):
         image = cv2.imread(os.path.join(images_path, file))
-        image = cv2.resize(image, (64, 64))
+        image = cv2.resize(image, (256, 256))
         images.append(image)
 
         mask_path = os.path.join(masks_path, file.replace('.jpg', '.json'))
         with open(mask_path, 'r') as f:
             mask_json = json.load(f)
-        mask = np.zeros((64, 64))
+        mask = np.zeros((256, 256))
         if mask_json['_via_img_metadata'][file + str(os.path.getsize(os.path.join(images_path, file)))]['regions']:
             points = mask_json['_via_img_metadata'][file + str(os.path.getsize(os.path.join(images_path, file)))]['regions'][0]['shape_attributes']['all_points_x_y']
             cv2.fillPoly(mask, np.array([points], dtype=np.int32), 1)
@@ -55,26 +55,33 @@ image_datagen.fit(X_train, augment=True, seed=42)
 mask_datagen.fit(y_train, augment=True, seed=42)
 
 # Build the model (U-Net)
-def build_unet(input_shape=(64, 64, 3)):
+def build_unet(input_shape=(256, 256, 3)):
     inputs = tf.keras.Input(input_shape)
 
-    conv1 = Conv2D(16, (3, 3), activation='relu', padding='same')(inputs)
+    conv1 = Conv2D(32, (3, 3), activation='relu', padding='same')(inputs)
     pool1 = MaxPooling2D(pool_size=(2, 2))(conv1)
 
-    conv2 = Conv2D(32, (3, 3), activation='relu', padding='same')(pool1)
+    conv2 = Conv2D(64, (3, 3), activation='relu', padding='same')(pool1)
     pool2 = MaxPooling2D(pool_size=(2, 2))(conv2)
 
-    conv3 = Conv2D(64, (3, 3), activation='relu', padding='same')(pool2)
+    conv3 = Conv2D(128, (3, 3), activation='relu', padding='same')(pool2)
+    pool3 = MaxPooling2D(pool_size=(2, 2))(conv3)
 
-    up4 = Concatenate()([UpSampling2D(size=(2, 2))(conv3), conv2])
-    conv4 = Conv2D(32, (3, 3), activation='relu', padding='same')(up4)
+    conv4 = Conv2D(256, (3, 3), activation='relu', padding='same')(pool3)
 
-    up5 = Concatenate()([UpSampling2D(size=(2, 2))(conv4), conv1])
-    conv5 = Conv2D(16, (3, 3), activation='relu', padding='same')(up5)
+    up5 = Concatenate()([UpSampling2D(size=(2, 2))(conv4), conv3])
+    conv5 = Conv2D(128, (3, 3), activation='relu', padding='same')(up5)
 
-    output = Conv2D(1, (1, 1), activation='sigmoid')(conv5)
+    up6 = Concatenate()([UpSampling2D(size=(2, 2))(conv5), conv2])
+    conv6 = Conv2D(64, (3, 3), activation='relu', padding='same')(up6)
+
+    up7 = Concatenate()([UpSampling2D(size=(2, 2))(conv6), conv1])
+    conv7 = Conv2D(32, (3, 3), activation='relu', padding='same')(up7)
+
+    output = Conv2D(1, (1, 1), activation='sigmoid')(conv7)
 
     return tf.keras.Model(inputs=inputs, outputs=output)
+
 
 
 model = build_unet()
@@ -97,7 +104,7 @@ def load_evaluation_images(evaluation_path):
     eval_images = []
     for file in os.listdir(evaluation_path):
         image = cv2.imread(os.path.join(evaluation_path, file))
-        image = cv2.resize(image, (64, 64))  # Resize the evaluation images to (64, 64)
+        image = cv2.resize(image, (256, 256))  # Resize the evaluation images to (64, 64)
         eval_images.append(image)
     return np.array(eval_images)
 
