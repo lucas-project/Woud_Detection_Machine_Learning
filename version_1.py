@@ -34,6 +34,11 @@ def load_images_and_masks(images_path, masks_path):
             image = cv2.imread(os.path.join(images_path, file), cv2.IMREAD_COLOR)
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
             image = cv2.resize(image, (256, 256))
+            
+            # Add additional channel
+            mean_pixel_value = np.mean(image, axis=-1, keepdims=True)
+            image = np.concatenate([image, mean_pixel_value], axis=-1)
+            
             images.append(image)
 
             polygon = mask_json['Label']['objects'][0]['instanceURI']
@@ -51,6 +56,11 @@ def load_images_and_masks(images_path, masks_path):
                 image = cv2.imread(os.path.join(images_path, file), cv2.IMREAD_COLOR)
                 image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
                 image = cv2.resize(image, (256, 256))
+                
+                # Add additional channel
+                mean_pixel_value = np.mean(image, axis=-1, keepdims=True)
+                image = np.concatenate([image, mean_pixel_value], axis=-1)
+                
                 images.append(image)
 
                 points = regions[0]['shape_attributes']['all_points_x_y']
@@ -65,28 +75,12 @@ def load_images_and_masks(images_path, masks_path):
 
     return np.array(images, dtype=object), np.array(masks, dtype=object)
 
-
-def dice_coefficient(y_true, y_pred):
-    y_true_f = tf.cast(tf.reshape(y_true, [-1]), tf.float32)
-    y_pred_f = tf.cast(tf.reshape(y_pred, [-1]), tf.float32)
-    intersection = tf.reduce_sum(y_true_f * y_pred_f)
-    return (2. * intersection + 1.) / (tf.reduce_sum(y_true_f) + tf.reduce_sum(y_pred_f) + 1.)
-
-
-
-
-
-
-
-
 X, y = load_images_and_masks(images_path, masks_path)
 
 # Train-validation split
 X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
 
 # Data augmentation
-# data_gen_args = dict(rotation_range=10, width_shift_range=0.05, height_shift_range=0.05,
-#                      shear_range=0.05, zoom_range=0.05, horizontal_flip=True, fill_mode='nearest')
 data_gen_args = dict(rotation_range=20,  # Increase rotation range
                      width_shift_range=0.1,  # Increase width shift range
                      height_shift_range=0.1,  # Increase height shift range
@@ -99,12 +93,11 @@ data_gen_args = dict(rotation_range=20,  # Increase rotation range
 image_datagen = ImageDataGenerator(**data_gen_args)
 mask_datagen = ImageDataGenerator(**data_gen_args)
 
-
 image_datagen.fit(X_train, augment=True, seed=42)
 mask_datagen.fit(y_train, augment=True, seed=42)
 
 # Build the model (U-Net)
-def build_unet(input_shape=(256, 256, 3)):
+def build_unet(input_shape=(256, 256, 4)):
     inputs = tf.keras.Input(input_shape)
 
     conv1 = Conv2D(32, (3, 3), activation='relu', padding='same')(inputs)
@@ -137,14 +130,16 @@ def build_unet(input_shape=(256, 256, 3)):
 
     return tf.keras.Model(inputs=inputs, outputs=output)
 
-
-
-
 model = build_unet()
+def dice_coefficient(y_true, y_pred):
+    y_true_f = tf.cast(tf.reshape(y_true, [-1]), tf.float32)
+    y_pred_f = tf.cast(tf.reshape(y_pred, [-1]), tf.float32)
+    intersection = tf.reduce_sum(y_true_f * y_pred_f)
+    return (2. * intersection + 1.) / (tf.reduce_sum(y_true_f) + tf.reduce_sum(y_pred_f) + 1.)
+
 
 # Compile the model
 model.compile(optimizer=Adam(), loss=BinaryCrossentropy(), metrics=[dice_coefficient])
-
 
 # Train the model
 train_generator = zip(image_datagen.flow(X_train, batch_size=len(X_train), seed=42),
@@ -156,28 +151,41 @@ val_generator = zip(image_datagen.flow(X_val, batch_size=len(X_val), seed=42),
 model.fit(train_generator, steps_per_epoch=len(X_train) // 2, validation_data=val_generator,
           validation_steps=len(X_val), epochs=50)
 
-
-
 # Evaluate the model's performance on the evaluation set
-def load_evaluation_images(evaluation_path):
+def load_evaluation_images(evaluation_path, additional_input):
     eval_images = []
     for file in os.listdir(evaluation_path):
         image = cv2.imread(os.path.join(evaluation_path, file))
-        image = cv2.resize(image, (256, 256))  # Resize the evaluation images to (64, 64)
+        image = cv2.resize(image, (256, 256))  # Resize the evaluation images to (256, 256)
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        
+        # Add the additional input channel
+        additional_channel = np.full((256, 256, 1), additional_input)
+        image = np.concatenate([image, additional_channel], axis=-1)
+        
         eval_images.append(image)
     return np.array(eval_images)
 
 
-evaluation_images = load_evaluation_images(evaluation_path)
+additional_input = 128  # Replace this with the desired value
+evaluation_images = load_evaluation_images(evaluation_path, additional_input)
+
 
 # Predict and display results
 predicted_masks = model.predict(evaluation_images)
+def convert_image_for_display(image):
+    return np.uint8(image[:, :, :3])
+
 
 for i in range(len(evaluation_images)):
-    cv2.imshow(f'Original Image {i}', evaluation_images[i])
+    display_image = convert_image_for_display(evaluation_images[i])
+    cv2.imshow(f'Original Image {i}', display_image)
     cv2.imshow(f'Predicted Mask {i}', predicted_masks[i])
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
+
 # Save the model
 model.save('wound_segmentation_model.h5')
+
+
