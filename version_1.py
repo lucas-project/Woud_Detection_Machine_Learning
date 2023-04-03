@@ -24,6 +24,13 @@ def load_images_and_masks(images_path, masks_path):
     images = []
     masks = []
 
+
+    json_files = os.listdir(masks_path)
+    
+    # Sort JSON files numerically
+    json_files = sorted(json_files, key=lambda x: int(x[:-5]))
+
+
     for file in os.listdir(images_path):
         # Load corresponding mask
         with open(os.path.join(masks_path, file[:-4] + '.json')) as f:
@@ -76,6 +83,29 @@ def load_images_and_masks(images_path, masks_path):
     return np.array(images, dtype=object), np.array(masks, dtype=object)
 
 X, y = load_images_and_masks(images_path, masks_path)
+
+# Display JSON masking images
+def display_json_masks(masks_path, masks):
+    for idx, file in enumerate(os.listdir(masks_path)):
+        with open(os.path.join(masks_path, file)) as f:
+            mask_json = json.load(f)
+
+        if 'Label' in mask_json and 'objects' in mask_json['Label']:
+            instance_uri = mask_json['Label']['objects'][0]['instanceURI']
+            response = requests.get(instance_uri)
+            mask = np.array(Image.open(BytesIO(response.content)).convert('L'))
+            mask = cv2.resize(mask, (256, 256))
+        else:
+            print(f"No 'Label' or 'objects' key found for {file}. Skipping...")
+            continue
+
+        cv2.imshow(f"JSON Mask {idx}", mask)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+
+# Display the JSON format masking images
+display_json_masks(masks_path, y)
+
 
 # Train-validation split
 X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
@@ -149,7 +179,7 @@ val_generator = zip(image_datagen.flow(X_val, batch_size=len(X_val), seed=42),
                     mask_datagen.flow(y_val, batch_size=len(y_val), seed=42))
 
 model.fit(train_generator, steps_per_epoch=len(X_train) // 2, validation_data=val_generator,
-          validation_steps=len(X_val), epochs=50)
+          validation_steps=len(X_val), epochs=10)
 
 # Evaluate the model's performance on the evaluation set
 def load_evaluation_images(evaluation_path, additional_input):
