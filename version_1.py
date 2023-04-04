@@ -179,7 +179,7 @@ val_generator = zip(image_datagen.flow(X_val, batch_size=len(X_val), seed=42),
                     mask_datagen.flow(y_val, batch_size=len(y_val), seed=42))
 
 model.fit(train_generator, steps_per_epoch=len(X_train) // 2, validation_data=val_generator,
-          validation_steps=len(X_val), epochs=10)
+          validation_steps=len(X_val), epochs=100)
 
 # Evaluate the model's performance on the evaluation set
 def load_evaluation_images(evaluation_path, additional_input):
