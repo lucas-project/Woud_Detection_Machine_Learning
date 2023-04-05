@@ -15,33 +15,36 @@ from tensorflow.keras.metrics import MeanIoU
 from sklearn.model_selection import train_test_split
 from tensorflow.keras.layers import BatchNormalization
 from tensorflow.keras.callbacks import EarlyStopping
+from tensorflow.keras.layers import BatchNormalization
+import re
 
 
 # Set up directories
-images_path = 'C:/Users/User/Desktop/ml/images/'
-masks_path = 'C:/Users/User/Desktop/ml/json/'
+images_json_path = 'C:/Users/User/Desktop/ml/json_images/'
+masks_json_path = 'C:/Users/User/Desktop/ml/json_masking/'
+images_png_path = 'C:/Users/User/Desktop/ml/png_images/'
+masks_png_path = 'C:/Users/User/Desktop/ml/png_masking/'
 evaluation_path = 'C:/Users/User/Desktop/ml/evaluation/'
 
 # Load and preprocess the data
-def load_images_and_masks(images_path, masks_path):
+def load_images_and_masks(images_json_path, images_png_path, masks_json_path, masks_png_path):
     images = []
     masks = []
 
-
-    json_files = os.listdir(masks_path)
+    # Load images with JSON masks
+    json_files = os.listdir(masks_json_path)
     
     # Sort JSON files numerically
-    json_files = sorted(json_files, key=lambda x: int(x[:-5]))
+    json_files = sorted(json_files, key=lambda x: int(re.search(r'\d+', x).group()))
 
-
-    for file in os.listdir(images_path):
-        # Load corresponding mask
-        with open(os.path.join(masks_path, file[:-4] + '.json')) as f:
+    for file in json_files:
+        # Load corresponding JSON mask
+        with open(os.path.join(masks_json_path, file[:-5] + '.json')) as f:
             mask_json = json.load(f)
 
         if 'Label' in mask_json:
             # Load image
-            image = cv2.imread(os.path.join(images_path, file), cv2.IMREAD_COLOR)
+            image = cv2.imread(os.path.join(images_json_path, file[:-5] + '.jpg'), cv2.IMREAD_COLOR)
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
             image = cv2.resize(image, (256, 256))
             
@@ -58,12 +61,12 @@ def load_images_and_masks(images_path, masks_path):
             mask = np.expand_dims(mask, axis=-1)  # Convert to (256, 256, 1) shape
             mask = mask / 255.0  # Scale mask values between 0 and 1
         else:
-            key = file + str(os.stat(os.path.join(images_path, file)).st_size)
+            key = file + str(os.stat(os.path.join(images_json_path, file)).st_size)
             regions = mask_json['_via_img_metadata'][key]['regions']
             
             if len(regions) > 0:
                 # Load image
-                image = cv2.imread(os.path.join(images_path, file), cv2.IMREAD_COLOR)
+                image = cv2.imread(os.path.join(images_json_path, file[:-5] + '.jpg'), cv2.IMREAD_COLOR)
                 image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
                 image = cv2.resize(image, (256, 256))
                 
@@ -82,15 +85,44 @@ def load_images_and_masks(images_path, masks_path):
                 continue
 
         masks.append(mask)
+        print(f"Loaded JSON mask for file {file}")
+
+    # Load images with PNG masks
+    png_files = os.listdir(images_png_path)
+
+    # Sort PNG files numerically
+    png_files = sorted(png_files, key=lambda x: int(re.search(r'\d+', x).group()))
+
+    for file in png_files:
+        # Load PNG mask
+        mask = cv2.imread(os.path.join(masks_png_path, file[:-4] + '.png'), cv2.IMREAD_GRAYSCALE)
+        mask = cv2.resize(mask, (256,256))
+        mask = np.expand_dims(mask, axis=-1)  # Convert to (256, 256, 1) shape
+        mask = mask / 255.0  # Scale mask values between 0 and 1
+
+        # Load image
+        image = cv2.imread(os.path.join(images_png_path, file), cv2.IMREAD_COLOR)
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        image = cv2.resize(image, (256, 256))
+        
+        # Add additional channel
+        mean_pixel_value = np.mean(image, axis=-1, keepdims=True)
+        image = np.concatenate([image, mean_pixel_value], axis=-1)
+        
+        images.append(image)
+        masks.append(mask)
+        print(f"Loaded PNG mask for file {file}")
 
     return np.array(images, dtype=object), np.array(masks, dtype=object)
 
-X, y = load_images_and_masks(images_path, masks_path)
+
+X, y = load_images_and_masks(images_json_path, images_png_path, masks_json_path, masks_png_path)
+
 
 # Display JSON masking images
-def display_json_masks(masks_path, masks):
-    for idx, file in enumerate(os.listdir(masks_path)):
-        with open(os.path.join(masks_path, file)) as f:
+def display_json_masks(masks_json_path, masks):
+    for idx, file in enumerate(os.listdir(masks_json_path)):
+        with open(os.path.join(masks_json_path, file)) as f:
             mask_json = json.load(f)
 
         if 'Label' in mask_json and 'objects' in mask_json['Label']:
@@ -107,7 +139,7 @@ def display_json_masks(masks_path, masks):
         cv2.destroyAllWindows()
 
 # Display the JSON format masking images
-# display_json_masks(masks_path, y)
+# display_json_masks(masks_json_path, y)
 
 
 # Train-validation split
@@ -130,7 +162,7 @@ image_datagen.fit(X_train, augment=True, seed=42)
 mask_datagen.fit(y_train, augment=True, seed=42)
 
 # Build the model (U-Net)
-from tensorflow.keras.layers import BatchNormalization
+
 
 def build_unet(input_shape=(256, 256, 4)):
     inputs = tf.keras.Input(input_shape)
@@ -193,7 +225,7 @@ val_generator = zip(image_datagen.flow(X_val, batch_size=batch_size, seed=42),
 early_stopping = EarlyStopping(monitor='val_loss', patience=5, verbose=1, restore_best_weights=True)
 
 model.fit(train_generator, steps_per_epoch=len(X_train) // batch_size, validation_data=val_generator,
-          validation_steps=len(X_val) // batch_size, epochs=5, callbacks=[early_stopping])
+          validation_steps=len(X_val) // batch_size, epochs=50, callbacks=[early_stopping])
 
 # Evaluate the model's performance on the evaluation set
 def load_evaluation_images(evaluation_path, additional_input):
