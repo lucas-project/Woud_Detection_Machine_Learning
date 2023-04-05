@@ -14,6 +14,8 @@ from tensorflow.keras.losses import BinaryCrossentropy
 from tensorflow.keras.metrics import MeanIoU
 from sklearn.model_selection import train_test_split
 from tensorflow.keras.layers import BatchNormalization
+from tensorflow.keras.callbacks import EarlyStopping
+
 
 # Set up directories
 images_path = 'C:/Users/User/Desktop/ml/images/'
@@ -133,36 +135,39 @@ from tensorflow.keras.layers import BatchNormalization
 def build_unet(input_shape=(256, 256, 4)):
     inputs = tf.keras.Input(input_shape)
 
-    conv1 = Conv2D(32, (3, 3), activation='relu', padding='same')(inputs)
+    conv1 = Conv2D(26, (3, 3), activation='relu', padding='same')(inputs)
     bn1 = BatchNormalization()(conv1)
     pool1 = MaxPooling2D(pool_size=(2, 2))(bn1)
 
-    conv2 = Conv2D(64, (3, 3), activation='relu', padding='same')(pool1)
+    conv2 = Conv2D(51, (3, 3), activation='relu', padding='same')(pool1)
     bn2 = BatchNormalization()(conv2)
     pool2 = MaxPooling2D(pool_size=(2, 2))(bn2)
 
-    conv3 = Conv2D(128, (3, 3), activation='relu', padding='same')(pool2)
+    conv3 = Conv2D(102, (3, 3), activation='relu', padding='same')(pool2)
     bn3 = BatchNormalization()(conv3)
     pool3 = MaxPooling2D(pool_size=(2, 2))(bn3)
 
-    conv4 = Conv2D(256, (3, 3), activation='relu', padding='same')(pool3)
+    conv4 = Conv2D(205, (3, 3), activation='relu', padding='same')(pool3)
     bn4 = BatchNormalization()(conv4)
 
     up7 = Concatenate()([UpSampling2D(size=(2, 2))(bn4), conv3])
-    conv7 = Conv2D(128, (3, 3), activation='relu', padding='same')(up7)
+    conv7 = Conv2D(102, (3, 3), activation='relu', padding='same')(up7)
     bn7 = BatchNormalization()(conv7)
 
     up8 = Concatenate()([UpSampling2D(size=(2, 2))(bn7), conv2])
-    conv8 = Conv2D(64, (3, 3), activation='relu', padding='same')(up8)
+    conv8 = Conv2D(51, (3, 3), activation='relu', padding='same')(up8)
     bn8 = BatchNormalization()(conv8)
 
     up9 = Concatenate()([UpSampling2D(size=(2, 2))(bn8), conv1])
-    conv9 = Conv2D(32, (3, 3), activation='relu', padding='same')(up9)
+    conv9 = Conv2D(26, (3, 3), activation='relu', padding='same')(up9)
     bn9 = BatchNormalization()(conv9)
 
     output = Conv2D(1, (1, 1), activation='sigmoid')(bn9)
 
     return tf.keras.Model(inputs=inputs, outputs=output)
+
+
+
 
 
 model = build_unet()
@@ -185,9 +190,10 @@ train_generator = zip(image_datagen.flow(X_train, batch_size=batch_size, seed=42
 val_generator = zip(image_datagen.flow(X_val, batch_size=batch_size, seed=42),
                     mask_datagen.flow(y_val, batch_size=batch_size, seed=42))
 
+early_stopping = EarlyStopping(monitor='val_loss', patience=5, verbose=1, restore_best_weights=True)
 
 model.fit(train_generator, steps_per_epoch=len(X_train) // batch_size, validation_data=val_generator,
-          validation_steps=len(X_val) // batch_size, epochs=5)
+          validation_steps=len(X_val) // batch_size, epochs=5, callbacks=[early_stopping])
 
 # Evaluate the model's performance on the evaluation set
 def load_evaluation_images(evaluation_path, additional_input):
