@@ -13,6 +13,7 @@ from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.losses import BinaryCrossentropy
 from tensorflow.keras.metrics import MeanIoU
 from sklearn.model_selection import train_test_split
+from tensorflow.keras.layers import BatchNormalization
 
 # Set up directories
 images_path = 'C:/Users/User/Desktop/ml/images/'
@@ -104,7 +105,7 @@ def display_json_masks(masks_path, masks):
         cv2.destroyAllWindows()
 
 # Display the JSON format masking images
-display_json_masks(masks_path, y)
+# display_json_masks(masks_path, y)
 
 
 # Train-validation split
@@ -127,38 +128,42 @@ image_datagen.fit(X_train, augment=True, seed=42)
 mask_datagen.fit(y_train, augment=True, seed=42)
 
 # Build the model (U-Net)
+from tensorflow.keras.layers import BatchNormalization
+
 def build_unet(input_shape=(256, 256, 4)):
     inputs = tf.keras.Input(input_shape)
 
     conv1 = Conv2D(32, (3, 3), activation='relu', padding='same')(inputs)
-    pool1 = MaxPooling2D(pool_size=(2, 2))(conv1)
+    bn1 = BatchNormalization()(conv1)
+    pool1 = MaxPooling2D(pool_size=(2, 2))(bn1)
 
     conv2 = Conv2D(64, (3, 3), activation='relu', padding='same')(pool1)
-    pool2 = MaxPooling2D(pool_size=(2, 2))(conv2)
+    bn2 = BatchNormalization()(conv2)
+    pool2 = MaxPooling2D(pool_size=(2, 2))(bn2)
 
     conv3 = Conv2D(128, (3, 3), activation='relu', padding='same')(pool2)
-    pool3 = MaxPooling2D(pool_size=(2, 2))(conv3)
+    bn3 = BatchNormalization()(conv3)
+    pool3 = MaxPooling2D(pool_size=(2, 2))(bn3)
 
     conv4 = Conv2D(256, (3, 3), activation='relu', padding='same')(pool3)
-    pool4 = MaxPooling2D(pool_size=(2, 2))(conv4)
+    bn4 = BatchNormalization()(conv4)
 
-    conv5 = Conv2D(512, (3, 3), activation='relu', padding='same')(pool4)
-
-    up6 = Concatenate()([UpSampling2D(size=(2, 2))(conv5), conv4])
-    conv6 = Conv2D(256, (3, 3), activation='relu', padding='same')(up6)
-
-    up7 = Concatenate()([UpSampling2D(size=(2, 2))(conv6), conv3])
+    up7 = Concatenate()([UpSampling2D(size=(2, 2))(bn4), conv3])
     conv7 = Conv2D(128, (3, 3), activation='relu', padding='same')(up7)
+    bn7 = BatchNormalization()(conv7)
 
-    up8 = Concatenate()([UpSampling2D(size=(2, 2))(conv7), conv2])
+    up8 = Concatenate()([UpSampling2D(size=(2, 2))(bn7), conv2])
     conv8 = Conv2D(64, (3, 3), activation='relu', padding='same')(up8)
+    bn8 = BatchNormalization()(conv8)
 
-    up9 = Concatenate()([UpSampling2D(size=(2, 2))(conv8), conv1])
+    up9 = Concatenate()([UpSampling2D(size=(2, 2))(bn8), conv1])
     conv9 = Conv2D(32, (3, 3), activation='relu', padding='same')(up9)
+    bn9 = BatchNormalization()(conv9)
 
-    output = Conv2D(1, (1, 1), activation='sigmoid')(conv9)
+    output = Conv2D(1, (1, 1), activation='sigmoid')(bn9)
 
     return tf.keras.Model(inputs=inputs, outputs=output)
+
 
 model = build_unet()
 def dice_coefficient(y_true, y_pred):
@@ -172,14 +177,17 @@ def dice_coefficient(y_true, y_pred):
 model.compile(optimizer=Adam(), loss=BinaryCrossentropy(), metrics=[dice_coefficient])
 
 # Train the model
-train_generator = zip(image_datagen.flow(X_train, batch_size=len(X_train), seed=42),
-                      mask_datagen.flow(y_train, batch_size=len(y_train), seed=42))
+batch_size = 8  # Set your desired batch size
 
-val_generator = zip(image_datagen.flow(X_val, batch_size=len(X_val), seed=42),
-                    mask_datagen.flow(y_val, batch_size=len(y_val), seed=42))
+train_generator = zip(image_datagen.flow(X_train, batch_size=batch_size, seed=42),
+                      mask_datagen.flow(y_train, batch_size=batch_size, seed=42))
 
-model.fit(train_generator, steps_per_epoch=len(X_train) // 2, validation_data=val_generator,
-          validation_steps=len(X_val), epochs=100)
+val_generator = zip(image_datagen.flow(X_val, batch_size=batch_size, seed=42),
+                    mask_datagen.flow(y_val, batch_size=batch_size, seed=42))
+
+
+model.fit(train_generator, steps_per_epoch=len(X_train) // batch_size, validation_data=val_generator,
+          validation_steps=len(X_val) // batch_size, epochs=5)
 
 # Evaluate the model's performance on the evaluation set
 def load_evaluation_images(evaluation_path, additional_input):
