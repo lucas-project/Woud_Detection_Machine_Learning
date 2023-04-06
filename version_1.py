@@ -18,11 +18,11 @@ from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.layers import BatchNormalization
 import re
 # Set up directories
-images_json_path = 'C:/Users/User/Desktop/ml/json_images/'
-masks_json_path = 'C:/Users/User/Desktop/ml/json_masking/'
+images_json_path = 'C:/Users/User/Desktop/ml/fake_wound/'
+masks_json_path = 'C:/Users/User/Desktop/ml/fake_jj/'
 images_png_path = 'C:/Users/User/Desktop/ml/png_images/'
 masks_png_path = 'C:/Users/User/Desktop/ml/png_masking/'
-evaluation_path = 'C:/Users/User/Desktop/ml/evaluation/'
+evaluation_path = 'C:/Users/User/Desktop/ml/fake_evaluation/'
 
 # Load and preprocess the data
 def load_images_and_masks(images_json_path, images_png_path, masks_json_path, masks_png_path):
@@ -137,7 +137,7 @@ def display_json_masks(masks_json_path, masks):
         cv2.destroyAllWindows()
 
 # Display the JSON format masking images
-# display_json_masks(masks_json_path, y)
+display_json_masks(masks_json_path, y)
 
 
 # Train-validation split
