@@ -295,6 +295,58 @@ def extract_color_information(original_image, mask):
     return masked_image
 
 
+# Constants
+COIN_DIAMETER_MM = 28.0  # Diameter of a 2-dollar coin in millimeters
+
+# Function to detect the 2-dollar coin using the Hough Circle Transform
+def detect_coin(image, min_radius, max_radius):
+    if image is None:
+        print("Error loading the image.")
+        return None
+
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    circles = cv2.HoughCircles(gray, cv2.HOUGH_GRADIENT, 1, minDist=30, param1=50, param2=30, minRadius=min_radius, maxRadius=max_radius)
+    
+    if circles is not None:
+        circles = np.round(circles[0, :]).astype("int")
+        return circles[0]  # Return the first detected circle
+    else:
+        return None
+
+
+# Function to calculate the wound area in pixels
+def calculate_wound_area(mask):
+    return np.sum(mask == 255)
+
+# Function to estimate actual wound area using scaling factor
+def estimate_actual_area(pixels_area, scaling_factor):
+    return pixels_area * scaling_factor * scaling_factor
+
+# Main code
+image_path = evaluation_path  
+image = cv2.imread(image_path)
+
+# Detect the 2-dollar coin
+coin = detect_coin(image, min_radius=30, max_radius=100)
+
+if coin is not None:
+    # Calculate the diameter of the coin in the image (in pixels)
+    coin_diameter_pixels = coin[2] * 2
+
+    # Calculate the scaling factor (actual diameter / image diameter)
+    scaling_factor = COIN_DIAMETER_MM / coin_diameter_pixels
+
+    # Calculate the wound area in the image (in pixels)
+    # Replace 'binary_mask' with the actual binary mask variable from your implementation
+    wound_area_pixels = calculate_wound_area(binary_masks)
+
+    # Estimate the actual wound area using the scaling factor
+    actual_wound_area = estimate_actual_area(wound_area_pixels, scaling_factor)
+    print(f"Actual wound area: {actual_wound_area:.2f} square millimeters")
+else:
+    print("No 2-dollar coin detected. Cannot estimate actual wound area.")
+
+
 
 for i, binary_mask in enumerate(binary_masks):
     original_image = convert_image_for_display(evaluation_images[i])
