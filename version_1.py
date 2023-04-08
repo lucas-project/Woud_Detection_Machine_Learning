@@ -20,8 +20,10 @@ import re
 # Set up directories
 images_json_path = 'C:/Users/User/Desktop/ml/fake_wound/'
 masks_json_path = 'C:/Users/User/Desktop/ml/fake_jj/'
-images_png_path = 'C:/Users/User/Desktop/ml/png_images/'
-masks_png_path = 'C:/Users/User/Desktop/ml/png_masking/'
+# images_png_path = 'C:/Users/User/Desktop/ml/png_images/'
+# masks_png_path = 'C:/Users/User/Desktop/ml/png_masking/'
+images_png_path = 'C:/Users/User/Desktop/ml/fake_png_1/'
+masks_png_path = 'C:/Users/User/Desktop/ml/fake_png_2/'
 evaluation_path = 'C:/Users/User/Desktop/ml/fake_evaluation/'
 
 # Load and preprocess the data
@@ -43,6 +45,9 @@ def load_images_and_masks(images_json_path, images_png_path, masks_json_path, ma
         if 'Label' in mask_json:
             # Load image
             image = cv2.imread(os.path.join(images_json_path, file[:-5] + '.jpg'), cv2.IMREAD_COLOR)
+            if image is None:
+                print(f"Unable to read image file {file}. Skipping...")
+                continue
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
             image = cv2.resize(image, (256, 256))
             
@@ -65,6 +70,7 @@ def load_images_and_masks(images_json_path, images_png_path, masks_json_path, ma
             if len(regions) > 0:
                 # Load image
                 image = cv2.imread(os.path.join(images_json_path, file[:-5] + '.jpg'), cv2.IMREAD_COLOR)
+                
                 image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
                 image = cv2.resize(image, (256, 256))
                 
@@ -100,6 +106,9 @@ def load_images_and_masks(images_json_path, images_png_path, masks_json_path, ma
 
         # Load image
         image = cv2.imread(os.path.join(images_png_path, file), cv2.IMREAD_COLOR)
+        if image is None:
+            print(f"Unable to read image file {file}. Skipping...")
+            continue
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         image = cv2.resize(image, (256, 256))
         
@@ -137,7 +146,7 @@ def display_json_masks(masks_json_path, masks):
         cv2.destroyAllWindows()
 
 # Display the JSON format masking images
-display_json_masks(masks_json_path, y)
+# display_json_masks(masks_json_path, y)
 
 
 # Train-validation split
@@ -250,11 +259,60 @@ predicted_masks = model.predict(evaluation_images)
 def convert_image_for_display(image):
     return np.uint8(image[:, :, :3])
 
+def extract_wound_area(image, binary_mask):
+    wound_area = cv2.bitwise_and(image, image, mask=binary_mask)
+    return wound_area
 
+
+# Set a threshold value
+threshold = 0.6
+num_clusters = 8
+
+
+# Apply threshold to the predicted masks
+binary_masks = (predicted_masks > threshold).astype(np.uint8) * 255
+
+def calculate_color_percentage(image, centers):
+    unique_colors, counts = np.unique(image.reshape(-1, 3), axis=0, return_counts=True)
+    color_percentages = []
+
+    for color, count in zip(unique_colors, counts):
+        color_hex = "#{:02x}{:02x}{:02x}".format(color[0], color[1], color[2])
+        percentage = (count / np.sum(counts)) * 100
+        color_percentages.append((color_hex, percentage))
+
+    return color_percentages
+
+def quantize_image(image, num_clusters=8):
+    pixels = image.reshape(-1, 3)
+    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 100, 0.2)
+    _, labels, centers = cv2.kmeans(pixels.astype(np.float32), num_clusters, None, criteria, 10, cv2.KMEANS_RANDOM_CENTERS)
+    quantized_image = centers[labels.flatten()].reshape(image.shape).astype(np.uint8)
+    return quantized_image, centers
+
+def extract_color_information(original_image, mask):
+    masked_image = cv2.bitwise_and(original_image, original_image, mask=mask)
+    return masked_image
+
+
+
+for i, binary_mask in enumerate(binary_masks):
+    original_image = convert_image_for_display(evaluation_images[i])
+    masked_image = extract_color_information(original_image, binary_mask[:, :, 0])
+
+    quantized_masked_image, centers = quantize_image(masked_image, num_clusters)
+    color_percentages = calculate_color_percentage(quantized_masked_image, centers)
+
+    print(f"Color information and their percentage for image {i}:")
+    for color_info in color_percentages:
+        print(f"{color_info[0]} {color_info[1]:.2f}%")
+
+
+# Display the binary masks
 for i in range(len(evaluation_images)):
     display_image = convert_image_for_display(evaluation_images[i])
     cv2.imshow(f'Original Image {i}', display_image)
-    cv2.imshow(f'Predicted Mask {i}', predicted_masks[i])
+    cv2.imshow(f'Binary Mask {i}', binary_masks[i])
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
