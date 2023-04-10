@@ -26,6 +26,36 @@ images_png_path = 'C:/Users/User/Desktop/ml/fake_png_1/'
 masks_png_path = 'C:/Users/User/Desktop/ml/fake_png_2/'
 evaluation_path = 'C:/Users/User/Desktop/ml/fake_evaluation/'
 
+def resize_with_aspect_ratio(image, target_size):
+    h, w = image.shape[:2]
+    aspect_ratio = w / h
+
+    if w > h:
+        new_width = target_size
+        new_height = int(new_width / aspect_ratio)
+    else:
+        new_height = target_size
+        new_width = int(new_height * aspect_ratio)
+
+    return cv2.resize(image, (new_width, new_height))
+
+def pad_image(image, target_size):
+    height, width = image.shape[:2]
+    new_width, new_height = target_size, target_size
+
+    top_pad = (new_height - height) // 2
+    bottom_pad = new_height - height - top_pad
+    left_pad = (new_width - width) // 2
+    right_pad = new_width - width - left_pad
+
+    if image.ndim == 3:
+        return np.pad(image, ((top_pad, bottom_pad), (left_pad, right_pad), (0, 0)), mode='constant')
+    elif image.ndim == 2:
+        return np.pad(image, ((top_pad, bottom_pad), (left_pad, right_pad)), mode='constant')
+    else:
+        raise ValueError("The input image must have 2 or 3 dimensions.")
+
+
 # Load and preprocess the data
 def load_images_and_masks(images_json_path, images_png_path, masks_json_path, masks_png_path):
     images = []
@@ -44,13 +74,16 @@ def load_images_and_masks(images_json_path, images_png_path, masks_json_path, ma
 
         if 'Label' in mask_json:
             # Load image
+            target_size = 256
+
             image = cv2.imread(os.path.join(images_json_path, file[:-5] + '.jpg'), cv2.IMREAD_COLOR)
             if image is None:
                 print(f"Unable to read image file {file}. Skipping...")
                 continue
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-            image = cv2.resize(image, (256, 256))
-            
+            image = resize_with_aspect_ratio(image, target_size)
+            image = pad_image(image, target_size)
+
             # Add additional channel
             mean_pixel_value = np.mean(image, axis=-1, keepdims=True)
             image = np.concatenate([image, mean_pixel_value], axis=-1)
@@ -60,36 +93,12 @@ def load_images_and_masks(images_json_path, images_png_path, masks_json_path, ma
             polygon = mask_json['Label']['objects'][0]['instanceURI']
             response = requests.get(polygon)
             mask = np.array(Image.open(BytesIO(response.content)).convert('L'))
-            mask = cv2.resize(mask, (256, 256))
+            mask = resize_with_aspect_ratio(mask, target_size)
+            mask = pad_image(mask, target_size)
             mask = np.expand_dims(mask, axis=-1)  # Convert to (256, 256, 1) shape
             mask = mask / 255.0  # Scale mask values between 0 and 1
-        else:
-            key = file + str(os.stat(os.path.join(images_json_path, file)).st_size)
-            regions = mask_json['_via_img_metadata'][key]['regions']
-            
-            if len(regions) > 0:
-                # Load image
-                image = cv2.imread(os.path.join(images_json_path, file[:-5] + '.jpg'), cv2.IMREAD_COLOR)
-                
-                image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-                image = cv2.resize(image, (256, 256))
-                
-                # Add additional channel
-                mean_pixel_value = np.mean(image, axis=-1, keepdims=True)
-                image = np.concatenate([image, mean_pixel_value], axis=-1)
-                
-                images.append(image)
-
-                points = regions[0]['shape_attributes']['all_points_x_y']
-                mask = np.zeros((256, 256), dtype=np.uint8)
-                cv2.fillPoly(mask, [np.array(points, np.int32).reshape((-1, 1, 2))], 255)
-                mask = np.expand_dims(mask, axis=-1)  # Convert to (256, 256, 1) shape
-            else:
-                print(f"No regions found for {file}. Skipping...")
-                continue
-
-        masks.append(mask)
-        print(f"Loaded JSON mask for file {file}")
+            masks.append(mask)
+            print(f"Loaded JSON mask for file {file}")
 
     # Load images with PNG masks
     png_files = os.listdir(images_png_path)
@@ -100,30 +109,49 @@ def load_images_and_masks(images_json_path, images_png_path, masks_json_path, ma
     for file in png_files:
         # Load PNG mask
         mask = cv2.imread(os.path.join(masks_png_path, file[:-4] + '.png'), cv2.IMREAD_GRAYSCALE)
-        mask = cv2.resize(mask, (256,256))
-        mask = np.expand_dims(mask, axis=-1)  # Convert to (256, 256, 1) shape
-        mask = mask / 255.0  # Scale mask values between 0 and 1
 
-        # Load image
         image = cv2.imread(os.path.join(images_png_path, file), cv2.IMREAD_COLOR)
         if image is None:
             print(f"Unable to read image file {file}. Skipping...")
             continue
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        image = cv2.resize(image, (256, 256))
-        
+        image = resize_with_aspect_ratio(image, target_size)
+
         # Add additional channel
         mean_pixel_value = np.mean(image, axis=-1, keepdims=True)
         image = np.concatenate([image, mean_pixel_value], axis=-1)
-        
+        image = pad_image(image, target_size)
+
+        mask = resize_with_aspect_ratio(mask, target_size)
+        mask = pad_image(mask, target_size)
+        mask = np.expand_dims(mask, axis=-1)  # Convert to (256, 256, 1) shape
+        mask = mask / 255.0  # Scale mask values between 0 and 1
+
         images.append(image)
         masks.append(mask)
         print(f"Loaded PNG mask for file {file}")
 
-    return np.array(images, dtype=object), np.array(masks, dtype=object)
 
 
+        # height of the images and masks
+    max_width = max([img.shape[1] for img in images])
+    max_height = max([img.shape[0] for img in images])
+
+    # Create empty NumPy arrays with a consistent shape
+    images_array = np.zeros((len(images), max_height, max_width, 4), dtype=np.float32)
+    masks_array = np.zeros((len(masks), max_height, max_width, 1), dtype=np.float32)
+
+    # Fill the empty NumPy arrays with the resized images and masks
+    for i, (image, mask) in enumerate(zip(images, masks)):
+        height, width = image.shape[:2]
+        images_array[i, :height, :width] = image
+        masks_array[i, :height, :width] = mask
+
+    return images_array, masks_array
+
+# Run the corrected load_images_and_masks function
 X, y = load_images_and_masks(images_json_path, images_png_path, masks_json_path, masks_png_path)
+
 
 
 # Display JSON masking images
@@ -136,7 +164,7 @@ def display_json_masks(masks_json_path, masks):
             instance_uri = mask_json['Label']['objects'][0]['instanceURI']
             response = requests.get(instance_uri)
             mask = np.array(Image.open(BytesIO(response.content)).convert('L'))
-            mask = cv2.resize(mask, (256, 256))
+            mask = resize_with_aspect_ratio(mask, 256)
         else:
             print(f"No 'Label' or 'objects' key found for {file}. Skipping...")
             continue
@@ -236,18 +264,42 @@ model.fit(train_generator, steps_per_epoch=len(X_train) // batch_size, validatio
 
 # Evaluate the model's performance on the evaluation set
 def load_evaluation_images(evaluation_path, additional_input):
-    eval_images = []
-    for file in os.listdir(evaluation_path):
-        image = cv2.imread(os.path.join(evaluation_path, file))
-        image = cv2.resize(image, (256, 256))  # Resize the evaluation images to (256, 256)
+    evaluation_images = []
+    image_files = os.listdir(evaluation_path)
+    image_files = sorted(image_files, key=lambda x: int(re.search(r'\d+', x).group()))
+
+    for file in image_files:
+        image = cv2.imread(os.path.join(evaluation_path, file), cv2.IMREAD_COLOR)
+        if image is None:
+            print(f"Unable to read image file {file}. Skipping...")
+            continue
+
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        
-        # Add the additional input channel
-        additional_channel = np.full((256, 256, 1), additional_input)
-        image = np.concatenate([image, additional_channel], axis=-1)
-        
-        eval_images.append(image)
-    return np.array(eval_images)
+        image = resize_with_aspect_ratio(image, 256)
+        image = pad_image(image, 256)
+
+        if additional_input:
+            mean_pixel_value = np.mean(image, axis=-1, keepdims=True)
+            image = np.concatenate([image, mean_pixel_value], axis=-1)
+
+        evaluation_images.append(image)
+        print(f"Loaded evaluation image {file}")
+
+    # Find the maximum width and height of the evaluation images
+    max_width = max([img.shape[1] for img in evaluation_images])
+    max_height = max([img.shape[0] for img in evaluation_images])
+
+    # Create an empty NumPy array with a consistent shape
+    evaluation_images_array = np.zeros((len(evaluation_images), max_height, max_width, 4), dtype=np.float32)
+
+    # Fill the empty NumPy array with the resized evaluation images
+    for i, image in enumerate(evaluation_images):
+        height, width = image.shape[:2]
+        evaluation_images_array[i, :height, :width] = image
+
+    return evaluation_images_array
+
+
 
 
 additional_input = 128  # Replace this with the desired value
