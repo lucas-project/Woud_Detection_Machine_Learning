@@ -17,6 +17,8 @@ from tensorflow.keras.layers import BatchNormalization
 from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.layers import BatchNormalization
 import re
+import matplotlib.pyplot as plt
+
 # Set up directories
 images_json_path = 'C:/Users/User/Desktop/ml/fake_wound/'
 masks_json_path = 'C:/Users/User/Desktop/ml/fake_jj/'
@@ -234,9 +236,6 @@ def build_unet(input_shape=(256, 256, 4)):
     return tf.keras.Model(inputs=inputs, outputs=output)
 
 
-
-
-
 model = build_unet()
 def dice_coefficient(y_true, y_pred):
     y_true_f = tf.cast(tf.reshape(y_true, [-1]), tf.float32)
@@ -260,10 +259,56 @@ val_generator = zip(image_datagen.flow(X_val, batch_size=batch_size, seed=42),
 early_stopping = EarlyStopping(monitor='val_loss', patience=5, verbose=1, restore_best_weights=True)
 
 model.fit(train_generator, steps_per_epoch=len(X_train) // batch_size, validation_data=val_generator,
-          validation_steps=len(X_val) // batch_size, epochs=5)
+          validation_steps=len(X_val) // batch_size, epochs=6)
+
+def display_coin_detection(image, coin_detected):
+    image_copy = image.copy()
+    
+    if coin_detected is not None:
+        x, y, r = coin_detected
+        cv2.circle(image_copy, (x, y), r, (0, 255, 0), 2)
+        cv2.circle(image_copy, (x, y), 2, (0, 0, 255), 3)
+    else:
+        print("No coin detected.")
+
+    plt.imshow(image_copy)
+    plt.show()
+
+
+# Function to detect the 2-dollar coin using the Hough Circle Transform
+def detect_coin(image, min_radius, max_radius):
+    if image is None:
+        print("Error loading the image.")
+        return None
+
+    # Convert image to 8-bit format
+    image = np.uint8(image)
+
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    circles = cv2.HoughCircles(gray, cv2.HOUGH_GRADIENT, 1, minDist=30, param1=50, param2=30, minRadius=min_radius, maxRadius=max_radius)
+    
+    if circles is not None:
+        circles = np.round(circles[0, :]).astype("int")
+        return circles[0]  # Return the first detected circle
+    else:
+        return None
+
+
+
+
+# Function to calculate the wound area in pixels
+def calculate_wound_area(mask):
+    return np.sum(mask == 255)
+
+# Function to estimate actual wound area using scaling factor
+def estimate_actual_area(pixels_area, scaling_factor):
+    return pixels_area * scaling_factor * scaling_factor
 
 # Evaluate the model's performance on the evaluation set
 def load_evaluation_images(evaluation_path, additional_input):
+    min_radius = 10
+    max_radius = 50
+    images = []
     evaluation_images = []
     image_files = os.listdir(evaluation_path)
     image_files = sorted(image_files, key=lambda x: int(re.search(r'\d+', x).group()))
@@ -285,6 +330,11 @@ def load_evaluation_images(evaluation_path, additional_input):
         evaluation_images.append(image)
         print(f"Loaded evaluation image {file}")
 
+        # Detect the coin in the image
+        coin_detected = detect_coin(image, min_radius, max_radius)
+
+        display_coin_detection(image, coin_detected)
+
     # Find the maximum width and height of the evaluation images
     max_width = max([img.shape[1] for img in evaluation_images])
     max_height = max([img.shape[0] for img in evaluation_images])
@@ -298,6 +348,8 @@ def load_evaluation_images(evaluation_path, additional_input):
         evaluation_images_array[i, :height, :width] = image
 
     return evaluation_images_array
+
+
 
 
 
@@ -350,29 +402,7 @@ def extract_color_information(original_image, mask):
 # Constants
 COIN_DIAMETER_MM = 28.0  # Diameter of a 2-dollar coin in millimeters
 
-# Function to detect the 2-dollar coin using the Hough Circle Transform
-def detect_coin(image, min_radius, max_radius):
-    if image is None:
-        print("Error loading the image.")
-        return None
 
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    circles = cv2.HoughCircles(gray, cv2.HOUGH_GRADIENT, 1, minDist=30, param1=50, param2=30, minRadius=min_radius, maxRadius=max_radius)
-    
-    if circles is not None:
-        circles = np.round(circles[0, :]).astype("int")
-        return circles[0]  # Return the first detected circle
-    else:
-        return None
-
-
-# Function to calculate the wound area in pixels
-def calculate_wound_area(mask):
-    return np.sum(mask == 255)
-
-# Function to estimate actual wound area using scaling factor
-def estimate_actual_area(pixels_area, scaling_factor):
-    return pixels_area * scaling_factor * scaling_factor
 
 # Main code
 image_path = evaluation_path  
