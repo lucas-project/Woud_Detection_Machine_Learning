@@ -172,8 +172,31 @@ def build_unet(input_shape=(256, 256, 4)):
     return tf.keras.Model(inputs=inputs, outputs=output)
 
 # Display JSON masking images (Check whether masking JSON file has been read by model correctly)
-def display_json_masks(masks_json_path, masks):
-    for idx, file in enumerate(os.listdir(masks_json_path)):
+# def display_json_masks(masks_json_path, masks):
+#     for idx, file in enumerate(os.listdir(masks_json_path)):
+#         with open(os.path.join(masks_json_path, file)) as f:
+#             mask_json = json.load(f)
+
+#         if 'Label' in mask_json and 'objects' in mask_json['Label']:
+#             instance_uri = mask_json['Label']['objects'][0]['instanceURI']
+#             response = requests.get(instance_uri)
+#             mask = np.array(Image.open(BytesIO(response.content)).convert('L'))
+#             mask = resize_with_aspect_ratio(mask, 256)
+#         else:
+#             print(f"No 'Label' or 'objects' key found for {file}. Skipping...")
+#             continue
+
+#         cv2.imshow(file, mask)
+#         cv2.waitKey(0)
+#         cv2.destroyAllWindows()
+import re
+
+def display_json_masks(images_json_path, masks_json_path, masks):
+    json_files = os.listdir(masks_json_path)
+    # Sort JSON files numerically
+    json_files = sorted(json_files, key=lambda x: int(re.search(r'\d+', x).group()))
+
+    for idx, file in enumerate(json_files):
         with open(os.path.join(masks_json_path, file)) as f:
             mask_json = json.load(f)
 
@@ -182,13 +205,38 @@ def display_json_masks(masks_json_path, masks):
             response = requests.get(instance_uri)
             mask = np.array(Image.open(BytesIO(response.content)).convert('L'))
             mask = resize_with_aspect_ratio(mask, 256)
+
+            # Load the corresponding image
+            image = cv2.imread(os.path.join(images_json_path, file[:-5] + '.jpg'), cv2.IMREAD_COLOR)
+            if image is None:
+                print(f"Unable to read image file {file}. Skipping...")
+                continue
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            image = resize_with_aspect_ratio(image, 256)
         else:
             print(f"No 'Label' or 'objects' key found for {file}. Skipping...")
             continue
 
-        cv2.imshow(f"JSON Mask {idx}", mask)
+        # Ensure the image and mask have the same dimensions
+        image = pad_image(image, 256)
+        mask = pad_image(mask, 256)
+
+        # Add an extra channel to the mask and repeat it along the channel axis
+        mask = np.expand_dims(mask, axis=-1)
+        mask = np.repeat(mask, 3, axis=-1)  # Repeat the mask along the channel axis to match the image
+
+        # Display image and mask side by side
+        image_file_name = file[:-5] + '.jpg'
+        json_file_name = file
+        window_title = f"Image: {image_file_name} | JSON: {json_file_name}"
+        combined = np.concatenate((image, mask), axis=1)
+        cv2.imshow(window_title, combined)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
+
+
+
+
 
 # Get wound area from evaluation dataset
 def extract_wound_area(image, binary_mask):

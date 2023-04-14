@@ -35,7 +35,7 @@ evaluation_path = 'C:/Users/User/Desktop/ml/fake_evaluation/'
 X, y = load_images_and_masks(images_json_path, images_png_path, masks_json_path, masks_png_path)
 
 # Display the JSON format masking images
-# display_json_masks(masks_json_path, y)
+display_json_masks(images_json_path, masks_json_path, y)
 
 # Train-validation split
 X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
