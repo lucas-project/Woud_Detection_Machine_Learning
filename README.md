@@ -4,6 +4,11 @@ Version_1.py and Version_2.py are 2 different and independent methods of impleme
 Version_1 used TensorFlow with Kera, U-net architecture with VGG16 encoder
 
 To run the code:
+Install required libraries first:
+'''
+pip install numpy opencv-python tensorflow requests pillow scikit-learn
+'''
+Then:
 '''
 python version_1.py
 '''
