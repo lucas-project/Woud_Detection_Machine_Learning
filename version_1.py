@@ -101,7 +101,7 @@ for i, (image, predicted_mask) in enumerate(zip(evaluation_images, predicted_mas
     wound_area = extract_wound_area(image, binary_mask)
     
     display_image = convert_image_for_display(image)
-    display_coin_detection(display_image, None, wound_area=wound_area)
+    display_coin_detection(display_image, best_circle, wound_area=wound_area)#draw
 
 
 # coin size
@@ -111,7 +111,7 @@ image_path = evaluation_path
 image = cv2.imread(image_path)
 
 # Detect the 2-dollar coin
-coin = detect_coin(image, min_radius=30, max_radius=100)
+best_circle = detect_coin(image, min_radius=30, max_radius=100) #should be put in front of line 104?
 
 # Detect percentage of each colour
 for i, binary_mask in enumerate(binary_masks):

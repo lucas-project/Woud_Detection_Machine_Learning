@@ -3,15 +3,30 @@ import cv2
 import matplotlib.pyplot as plt
 
 # Diaplay detection result
-def display_coin_detection(image, coin_detected, wound_area=None):
-    if coin_detected is not None:
-        x, y, radius = coin_detected
-        cv2.circle(image, (x, y), radius, (0, 255, 0), 2)
+# def display_coin_detection(image, coin_detected, wound_area=None):
+#     if coin_detected is not None:
+#         x, y, radius = coin_detected
+#         cv2.circle(image, (x, y), radius, (0, 255, 0), 2)
 
-        if wound_area is not None:  # Only draw the wound area if it is provided
-            for point in wound_area:
-                x, y = point
-                cv2.circle(image, (x, y), 1, (0, 0, 255), -1)
+#         if wound_area is not None:  # Only draw the wound area if it is provided
+#             for point in wound_area:
+#                 x, y = point
+#                 cv2.circle(image, (x, y), 1, (0, 0, 255), -1)
+
+#     plt.imshow(image)
+#     plt.show()
+def display_coin_detection(image, coin_detected, wound_area=None):
+    if best_circle is not None:
+        x, y, radius = best_circle
+        diameter = 2 * radius
+        # print(f"Circle diameter: {diameter}")
+        cv2.circle(image, (x, y), radius, (0, 255, 0), 2)
+        cv2.circle(image, (x, y), 2, (0, 0, 255), 3)
+
+    if wound_area is not None:  # Only draw the wound area if it is provided
+        for point in wound_area:
+            x, y = point
+            cv2.circle(image, (x, y), 1, (0, 0, 255), -1)
 
     plt.imshow(image)
     plt.show()
