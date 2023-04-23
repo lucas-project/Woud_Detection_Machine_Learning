@@ -6,7 +6,7 @@ Version_1 used TensorFlow with Kera, U-net architecture with VGG16 encoder
 To run the code:
 Install required libraries first:
 '''
-pip install numpy opencv-python tensorflow requests pillow scikit-learn
+pip install numpy opencv-python tensorflow requests pillow scikit-learn matplotlib
 '''
 Then:
 '''
