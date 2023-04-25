@@ -19,7 +19,7 @@ from tensorflow.keras.layers import BatchNormalization
 import re
 import matplotlib.pyplot as plt
 from skimage import measure
-from v1_border import build_unet, resize_with_aspect_ratio, pad_image, display_json_masks, extract_wound_area, load_images_and_masks
+from v1_border import build_unet, display_json_masks, extract_wound_area, load_images_and_masks, extract_blue_contour
 from v1_coin import display_coin_detection, detect_coin, calculate_wound_area, estimate_actual_area
 from v1_colour import calculate_color_percentage, quantize_image, extract_color_information
 from v1_evaluation import load_evaluation_images
@@ -30,12 +30,30 @@ masks_json_path = 'fake_jj/'
 images_png_path = 'fake_png_1/'
 masks_png_path = 'fake_png_2/'
 evaluation_path = 'fake_evaluation/'
+input_directory = 'contour/'  
+output_directory = 'contour_processed/'  
+
+if not os.path.exists(output_directory):
+    os.makedirs(output_directory)
+
+for image_file in os.listdir(input_directory):
+    if image_file.endswith('.jpg'):
+        input_path = os.path.join(input_directory, image_file)
+        output_path = os.path.join(output_directory, image_file)
+        contour_image = extract_blue_contour(input_path)
+        cv2.imwrite(output_path, contour_image)
+
+        # Display the output image
+        cv2.imshow('Contour Image', contour_image)
+        cv2.waitKey(0)
+
+cv2.destroyAllWindows()
 
 # load_images_and_masks
 X, y = load_images_and_masks(images_json_path, images_png_path, masks_json_path, masks_png_path)
 
 # Display the JSON format masking images
-display_json_masks(images_json_path, masks_json_path, y)
+# display_json_masks(images_json_path, masks_json_path, y)
 
 # Train-validation split
 X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)

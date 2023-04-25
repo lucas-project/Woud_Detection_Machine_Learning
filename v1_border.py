@@ -255,3 +255,33 @@ def extract_wound_area(image, binary_mask):
 
     return wound_area
 
+
+def extract_blue_contour(image_path):
+    # Load the image
+    image = cv2.imread(image_path)
+
+    # Convert the image to HSV color space
+    hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+
+    # Define the lower and upper boundaries for the blue color
+    lower_blue = np.array([100, 50, 50])
+    upper_blue = np.array([130, 255, 255])
+
+    # Apply a mask to extract the blue color
+    mask = cv2.inRange(hsv_image, lower_blue, upper_blue)
+
+    # Apply dilation and erosion to reduce noise and improve the contour
+    kernel = np.ones((3, 3), np.uint8)
+    mask = cv2.dilate(mask, kernel, iterations=1)
+    mask = cv2.erode(mask, kernel, iterations=1)
+
+    # Find the contours in the masked image
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    # Create a new white image with the same size as the original image
+    contour_image = np.ones(image.shape, dtype=np.uint8) * 255
+
+    # Draw the contours on the new white image
+    cv2.drawContours(contour_image, contours, -1, (0, 0, 255), 2)
+
+    return contour_image
