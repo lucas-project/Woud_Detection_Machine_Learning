@@ -25,11 +25,11 @@ from v1_colour import calculate_color_percentage, quantize_image, extract_color_
 from v1_evaluation import load_evaluation_images
 
 # Set up path
-images_json_path = 'C:/Users/User/Desktop/ml/fake_wound/'
-masks_json_path = 'C:/Users/User/Desktop/ml/fake_jj/'
-images_png_path = 'C:/Users/User/Desktop/ml/fake_png_1/'
-masks_png_path = 'C:/Users/User/Desktop/ml/fake_png_2/'
-evaluation_path = 'C:/Users/User/Desktop/ml/fake_evaluation/'
+images_json_path = 'fake_wound/'
+masks_json_path = 'fake_jj/'
+images_png_path = 'fake_png_1/'
+masks_png_path = 'fake_png_2/'
+evaluation_path = 'fake_evaluation/'
 
 # load_images_and_masks
 X, y = load_images_and_masks(images_json_path, images_png_path, masks_json_path, masks_png_path)
