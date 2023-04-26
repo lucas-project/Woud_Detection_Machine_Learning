@@ -257,9 +257,7 @@ def extract_wound_area(image, binary_mask):
 
 
 def extract_blue_contour(image_path):
-    # Load the image
     image = cv2.imread(image_path)
-
     if image is None:
         raise ValueError(f"Unable to read image file {image_path}. Check file path/integrity")
 
@@ -294,6 +292,8 @@ def extract_blue_contour(image_path):
 
     return contour_image, pixel_count
 
+
+
 def process_images(directory):
     # Get all the files in the directory
     files = os.listdir(directory)
@@ -313,7 +313,7 @@ def process_images(directory):
 
         print(f"Number of pixels inside the contour for {image_file}: {pixel_count}")
 
-        cv2.imshow(f"Contour Image for {image_file}", contour_image)
+        # cv2.imshow(f"Contour Image for {image_file}", contour_image)
         cv2.waitKey(0)
 
         pixel_counts[image_file] = pixel_count
