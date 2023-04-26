@@ -109,3 +109,31 @@ def estimate_actual_area(image, wound_area_pixels, coin_detected):
     wound_area_cm2 = wound_area_pixels * pixel_to_cm2_ratio
 
     return wound_area_cm2
+
+### Just testing some alternative functions. Can ignore for now ###
+
+def pixels_to_metric(pixel_size, real_size):
+	return pixel_size / real_size
+	
+def calculate_area(image, wound_area_pixels, coin_detected):
+	if coin_detected is None:
+		print("No coin detected. Unable to estimate actual area.")
+		return None
+	
+	_, _, coin_radius = coin_detected
+	
+	coin_area_pixels = np.pi * (coin_radius ** 2)
+	coin_area_cm2 = 6.375 # Area of the 2-dollar coin in square centimeters
+
+	return wound_area_pixels * pixels_to_metric(coin_area_cm2, coin_area_pixels)
+	
+def calculate_length(image, wound_length_pixels, coin_detected):
+	if coin_detected is None:
+		print("No coin detected. Unable to estimate actual length.")
+		return None
+		
+	_, _, coin_radius = coin_detected
+	
+	coin_radius_cm = 1.025 # Radius of the $2 coin in centimeters
+	
+	return wound_length_pixels * pixels_to_metric(coin_radius_cm * coin_radius)
