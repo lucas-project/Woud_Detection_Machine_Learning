@@ -19,7 +19,7 @@ from tensorflow.keras.layers import BatchNormalization
 import re
 import matplotlib.pyplot as plt
 from skimage import measure
-from v1_border import build_unet, display_json_masks, extract_wound_area, load_images_and_masks, extract_blue_contour
+from v1_border import build_unet, display_json_masks, extract_wound_area, load_images_and_masks, extract_blue_contour, process_images
 from v1_coin import display_coin_detection, detect_coin, calculate_wound_area, estimate_actual_area
 from v1_colour import calculate_color_percentage, quantize_image, extract_color_information
 from v1_evaluation import load_evaluation_images
@@ -31,10 +31,14 @@ images_png_path = 'fake_png_1/'
 masks_png_path = 'fake_png_2/'
 evaluation_path = 'fake_evaluation/'
 input_directory = 'contour/'  
-output_directory = 'contour_processed/'  
+output_directory = 'contour_processed/' 
 
 if not os.path.exists(output_directory):
     os.makedirs(output_directory)
+
+#pixel coount of the wound
+pixel_counts = process_images(input_directory)
+print(pixel_counts)
 
 for image_file in os.listdir(input_directory):
     if image_file.endswith('.jpg'):

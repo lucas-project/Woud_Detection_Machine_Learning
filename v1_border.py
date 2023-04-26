@@ -260,28 +260,64 @@ def extract_blue_contour(image_path):
     # Load the image
     image = cv2.imread(image_path)
 
-    # Convert the image to HSV color space
+    if image is None:
+        raise ValueError(f"Unable to read image file {image_path}. Check file path/integrity")
+
+    # Resize the image while maintaining its aspect ratio
+    target_size = 256
+    image = resize_with_aspect_ratio(image, target_size)
+    image = pad_image(image, target_size)
+
     hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
     # Define the lower and upper boundaries for the blue color
     lower_blue = np.array([100, 50, 50])
     upper_blue = np.array([130, 255, 255])
 
-    # Apply a mask to extract the blue color
-    mask = cv2.inRange(hsv_image, lower_blue, upper_blue)
+    # Create a mask that isolates the blue color in the image
+    blue_mask = cv2.inRange(hsv_image, lower_blue, upper_blue)
 
-    # Apply dilation and erosion to reduce noise and improve the contour
-    kernel = np.ones((3, 3), np.uint8)
-    mask = cv2.dilate(mask, kernel, iterations=1)
-    mask = cv2.erode(mask, kernel, iterations=1)
+    # Perform contour detection
+    contours, _ = cv2.findContours(blue_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-    # Find the contours in the masked image
-    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    # Draw the largest contour on a white background
+    contour_image = np.zeros_like(image)
+    contour_image.fill(255)
+    cv2.drawContours(contour_image, contours, -1, (0, 0, 0), 2)
 
-    # Create a new white image with the same size as the original image
-    contour_image = np.ones(image.shape, dtype=np.uint8) * 255
+    # Create a binary mask where the contour region is white (255) and the rest of the image is black (0)
+    filled_contour = np.zeros(image.shape[:2], dtype=np.uint8)
+    cv2.drawContours(filled_contour, contours, -1, (255, 255, 255), thickness=cv2.FILLED)
 
-    # Draw the contours on the new white image
-    cv2.drawContours(contour_image, contours, -1, (0, 0, 255), 2)
+    # Count the pixels inside the filled contour
+    pixel_count = np.count_nonzero(filled_contour)
 
-    return contour_image
+    return contour_image, pixel_count
+
+def process_images(directory):
+    # Get all the files in the directory
+    files = os.listdir(directory)
+
+    # Filter out files that are not images (assuming .jpg format)
+    image_files = [file for file in files if file.lower().endswith(".jpg")]
+
+    # Sort image files numerically
+    image_files = sorted(image_files, key=lambda x: int(re.search(r'\d+', x).group()))
+
+    pixel_counts = {}
+
+    # Process each image file
+    for image_file in image_files:
+        image_path = os.path.join(directory, image_file)
+        contour_image, pixel_count = extract_blue_contour(image_path)
+
+        print(f"Number of pixels inside the contour for {image_file}: {pixel_count}")
+
+        cv2.imshow(f"Contour Image for {image_file}", contour_image)
+        cv2.waitKey(0)
+
+        pixel_counts[image_file] = pixel_count
+
+    cv2.destroyAllWindows()
+
+    return pixel_counts
