@@ -3,12 +3,16 @@ import cv2
 
 from datetime import datetime
 
-#from v1_coin import display_coin_detection, detect_coin, calculate_wound_area, estimate_actual_area
+## TODO: UPDATE THESE PATHS
+## TODO: DECIDE WHETHER TO USE ARRAY OF PATHS, OR SINGLE FOLDERS (CURRENT)
 
-training_image_paths = ['fake_wound/']
-training_mask_paths = ['fake_jj/']
+#training_image_paths = ['fake_wound/']
+#training_mask_paths = ['fake_jj/']
+training_images_path = 'fake_wound/'
+training_masks_path = 'fake_jj/'
 
-testing_image_paths = []
+#testing_image_paths = ['fake_evaluation/']
+testing_images_path = 'fake_evaluation/'
 
 model_file_name = 'wound_segmentation_model.h5'
 
@@ -16,12 +20,14 @@ COIN_RADIUS = 14.25 # Radius of an Australian $2 coin in millimeters
 
 ## MODEL TRAINING
 
+# TODO: MOVE THIS?
 def dice_coefficient(y_true, y_pred):
 	y_true_f = tf.cast(tf.reshape(y_true, [-1]), tf.float32)
 	y_pred_f = tf.cast(tf.reshape(y_pred, [-1]), tf.float32)
 	intersection = tf.reduce_sum(y_true_f * y_pred_f)
 	return (2. * intersection + 1.) / (tf.reduce_sum(y_true_f) + tf.reduce_sum(y_pred_f) + 1.)
-
+	
+# TODO: MOVE THIS?
 def convert_image_for_display(image):
 		return np.uint8(image[:, :, :3])
 
@@ -90,13 +96,34 @@ def model_predict():
 
 ## WOUND MESAUREMENT
 
+# TODO: Should we store the mask as a variable when training is complete, or load the mask here as well?
+# TODO: Maybe we could use the mask as well to exclude areas of the image detection?
 def wound_measurement():
-	pass
+	# Load images (Use this, or adapt existing function to work for both?)
+	image = cv2.imread(testing_images_path)
+	
+	# Find the coin
+	best_circle = detect_coin(image, min_radius=30, max_radius=100)
+	
+	#TODO: return what? Or display results? Save them to file?
 
 ## COLOUR ANALYSIS
 
+# TODO: Should we store the mask as a variable when training is complete, or load the mask here as well?
 def colour_analysis():
-	pass
+	# Detect percentage of each colour
+	for i, binary_mask in enumerate(binary_masks):
+		original_image = convert_image_for_display(evaluation_images[i])
+		masked_image = extract_color_information(original_image, binary_mask[:, :, 0])
+
+		quantized_masked_image, centers = quantize_image(masked_image, num_clusters)
+		color_percentages = calculate_color_percentage(quantized_masked_image, centers)
+
+		print(f"Color information and their percentage for image {i}:")
+		for color_info in color_percentages:
+			print(f"{color_info[0]} {color_info[1]:.2f}%")
+	
+	#TODO: return what? Or display results? Save them to file?
 
 ## TASK SELECTOR
 
@@ -158,9 +185,9 @@ def main():
 	print()
 	
 	# Simple program loop
-	# Lists names all tasks, requests user input, calls corresponding function
+	# Lists names of all tasks, requests user input, calls corresponding function
 	while(True):
-		print('*** TITLE ***')
+		print('*** TITLE ***') # TODO: What is our program called?
 		print()
 		
 		# Gives some information about the mode if one exists
