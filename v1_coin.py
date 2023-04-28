@@ -1,6 +1,9 @@
+import math
 import numpy as np
 import cv2
 import matplotlib.pyplot as plt
+
+from v1_border import process_image
 
 # Diaplay detection result
 def display_coin_detection(image, coin_detected, wound_area=None):
@@ -16,6 +19,23 @@ def display_coin_detection(image, coin_detected, wound_area=None):
     plt.imshow(image)
     plt.show()
 
+def calculate_actual_wound_area(ratio_coin, ratio_wound, coin_actual_area):
+    # ratio = circle_area / image_area
+    # print(f"Ratio of circle area to image area: {ratio:.6f}")
+    # print(f"Circle diameter: {diameter}")
+    # coin_actual_size = 2  # Diameter of the 2-dollar coin in centimeters
+    wound_actual_size = coin_actual_area / ratio_coin * ratio_wound
+    return wound_actual_size
+
+def calculate_ratio_wound_image(wound_pixel,image,image_path):
+    wound_pixel = process_image(image,image_path)
+    image_area = image.shape[0] * image.shape[1]
+    ratio_wound = wound_pixel / image_area
+    return ratio_wound
+
+def calculate_actual_coin_area(diameter):
+    coin_actual_area = math.pi * (diameter / 2) ** 2  # Area of a 2-dollar coin in millimeters squared
+    return coin_actual_area
 
 # Function to detect the 2-dollar coin using the Hough Circle Transform
 def detect_coin(image, min_radius, max_radius):
@@ -26,14 +46,53 @@ def detect_coin(image, min_radius, max_radius):
     # Convert image to 8-bit format
     image = np.uint8(image)
 
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    circles = cv2.HoughCircles(gray, cv2.HOUGH_GRADIENT, 1, minDist=30, param1=50, param2=30, minRadius=min_radius, maxRadius=max_radius)
-    
-    if circles is not None:
-        circles = np.round(circles[0, :]).astype("int")
-        return circles[0]  # Return the first detected circle
-    else:
-        return None
+    gray = cv2.cvtColor(image,cv2.COLOR_BGR2GRAY)
+    blur = cv2.GaussianBlur(gray, (7,7),1.2)
+    canny = cv2.Canny(blur, 50, 255)
+    # gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    # circles = cv2.HoughCircles(gray, cv2.HOUGH_GRADIENT, 1, minDist=30, param1=50, param2=30, minRadius=min_radius, maxRadius=max_radius)
+    circles = cv2.HoughCircles(canny, cv2.HOUGH_GRADIENT, 1, 20, param1=50, param2=30, minRadius=0, maxRadius=0)
+
+    # if circles is not None:
+    #     circles = np.round(circles[0, :]).astype("int")
+    #     return circles[0]  # Return the first detected circle
+    # else:
+    #     return None
+    if circles is not None: 
+        circles = np.uint16(np.around(circles))
+        
+        # Find the circle with the highest confidence (strongest edge)
+        best_circle = None
+        best_param2 = 0
+        
+        for i in circles[0, :]:
+            x, y, radius = i
+            circle_canny = canny[y - radius:y + radius, x - radius:x + radius]
+            
+            # Calculate the confidence score for the circle based on edge intensity
+            confidence = np.sum(circle_canny) / (circle_canny.shape[0] * circle_canny.shape[1])
+            
+            if confidence > best_param2:
+                best_circle = i
+                best_param2 = confidence
+        
+        # Draw the best circle
+        if best_circle is not None:
+            # #ratio of circle area to img area
+            circle_area = math.pi * radius**2
+            image_area = image.shape[0] * image.shape[1]
+            ratio = circle_area / image_area
+            # print(f"Ratio of circle area to image area: {ratio:.6f}")
+            return best_circle, ratio
+            # x, y, radius = best_circle
+            # diameter = 2 * radius
+            # print(f"Circle diameter: {diameter}")
+            # cv2.circle(image, (x, y), radius, (0, 255, 0), 2)
+            # cv2.circle(image, (x, y), 2, (0, 0, 255), 3)
+
+        # # Size of the image
+        # height, width, channels = img.shape
+        # print(f"Image size: {width}x{height}")
     
 
 # Function to calculate the wound area in pixels

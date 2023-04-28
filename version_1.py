@@ -19,8 +19,8 @@ from tensorflow.keras.layers import BatchNormalization
 import re
 import matplotlib.pyplot as plt
 from skimage import measure
-from v1_border import build_unet, display_json_masks, extract_wound_area, load_images_and_masks, extract_blue_contour, process_images
-from v1_coin import display_coin_detection, detect_coin, calculate_wound_area, estimate_actual_area
+from v1_border import build_unet, display_json_masks, extract_wound_area, load_images_and_masks, extract_blue_contour, process_image, process_images
+from v1_coin import display_coin_detection, detect_coin, calculate_wound_area, estimate_actual_area, calculate_actual_coin_area, calculate_ratio_wound_image, calculate_actual_wound_area
 from v1_colour import calculate_color_percentage, quantize_image, extract_color_information
 from v1_evaluation import load_evaluation_images
 
@@ -32,6 +32,9 @@ masks_png_path = 'fake_png_2/'
 evaluation_path = 'fake_evaluation/'
 input_directory = 'contour/'  
 output_directory = 'contour_processed/' 
+
+# coin size
+COIN_DIAMETER_MM = 28.0  # Diameter of a 2-dollar coin in millimeters
 
 if not os.path.exists(output_directory):
     os.makedirs(output_directory)
@@ -52,6 +55,27 @@ for image_file in os.listdir(input_directory):
         cv2.waitKey(0)
 
 cv2.destroyAllWindows()
+
+#coin related scale wound area
+image_test = cv2.imread('contour/1.jpg')
+image_path = 'contour/1.jpg'
+#pixel coount of the wound
+wound_pixel = process_image(image_test,image_path)
+# print(wound_pixel)
+
+# Detect the 2-dollar coin
+best_circle = detect_coin(image_test, min_radius=30, max_radius=100) #should be put in front of line 104?
+print(best_circle)
+
+# Get the actual pixel of wound area
+coin_actual_area = calculate_actual_coin_area(COIN_DIAMETER_MM)
+ratio_coin = best_circle[1]
+ratio_wound = calculate_ratio_wound_image(wound_pixel,image_test,image_path)
+wound_area = calculate_actual_wound_area(ratio_coin, ratio_wound, coin_actual_area)
+print(f"coin area is :{coin_actual_area}")
+print(f"coin/image ratio is :{ratio_coin}")
+print(f"wound/image ratio is :{ratio_wound}")
+print(f"wound area is :{wound_area}")
 
 # load_images_and_masks
 X, y = load_images_and_masks(images_json_path, images_png_path, masks_json_path, masks_png_path)
@@ -126,8 +150,7 @@ for i, (image, predicted_mask) in enumerate(zip(evaluation_images, predicted_mas
     display_coin_detection(display_image, None, wound_area=wound_area)
 
 
-# coin size
-COIN_DIAMETER_MM = 28.0  # Diameter of a 2-dollar coin in millimeters
+
 
 image_path = evaluation_path  
 image = cv2.imread(image_path)

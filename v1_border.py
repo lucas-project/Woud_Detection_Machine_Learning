@@ -321,3 +321,12 @@ def process_images(directory):
     cv2.destroyAllWindows()
 
     return pixel_counts
+
+def process_image(image,image_path):
+    # image_path = os.path(image)
+    contour_image, pixel_count = extract_blue_contour(image_path)
+
+    cv2.destroyAllWindows()
+
+    return pixel_count
+
