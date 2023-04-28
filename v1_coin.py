@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from v1_border import process_image
 
 # Diaplay detection result
-def display_coin_detection(image, coin_detected, wound_area=None):
+def display_coin_detection(image, coin_detected, wound_area):
     if coin_detected is not None:
         x, y, radius = coin_detected
         cv2.circle(image, (x, y), radius, (0, 255, 0), 2)
