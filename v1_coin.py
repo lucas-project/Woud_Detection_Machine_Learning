@@ -113,3 +113,27 @@ def estimate_actual_area(image, wound_area_pixels, coin_detected):
     wound_area_cm2 = wound_area_pixels * pixel_to_cm2_ratio
 
     return wound_area_cm2
+
+def estimate_actual_size(image, binary_mask, coin_detected):
+    if coin_detected is None:
+        print("No coin detected. Unable to estimate actual area.")
+        return None
+    
+    _, _, coin_radius = coin_detected
+    
+    # Get the contour from the mask. This is probably not necessary here. Ideally it would be done elsewhere
+    contour = cv2.findContours(binary_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    
+    # Generate a Rect around the contour
+    # cv2.boundingRect() will draw a rect around the contour, but is bound to images X and Y dimensions.
+    # cv2.minAreaRect() will draw a rect that will rotate to make the smallest possible area around the contour
+    rect = cv2.minAreaRect(contour)
+    
+    # We could display the original image here, with a box drawn over it. But I would prefer to do that in a separate function. Discuss with team
+    # Here is the code, just in case:
+    box = cv2.boxPoints(rect)
+    box = box.astype(int)
+    
+    cv2.drawContours(image, [box], 0, (0, 255, 0), 2)
+    
+    return rect
