@@ -294,30 +294,47 @@ def extract_blue_contour(image_path):
 
 
 
-def process_images(directory):
-    # Get all the files in the directory
-    files = os.listdir(directory)
+# def process_images(directory):
+#     # Get all the files in the directory
+#     files = os.listdir(directory)
 
-    # Filter out files that are not images (assuming .jpg format)
-    image_files = [file for file in files if file.lower().endswith(".jpg")]
+#     # Filter out files that are not images (assuming .jpg format)
+#     image_files = [file for file in files if file.lower().endswith(".jpg")]
 
-    # Sort image files numerically
-    image_files = sorted(image_files, key=lambda x: int(re.search(r'\d+', x).group()))
+#     # Sort image files numerically
+#     image_files = sorted(image_files, key=lambda x: int(re.search(r'\d+', x).group()))
 
-    pixel_counts = {}
+#     pixel_counts = {}
 
-    # Process each image file
-    for image_file in image_files:
-        image_path = os.path.join(directory, image_file)
-        contour_image, pixel_count = extract_blue_contour(image_path)
+#     # Process each image file
+#     for image_file in image_files:
+#         image_path = os.path.join(directory, image_file)
+#         contour_image, pixel_count = extract_blue_contour(image_path)
 
-        print(f"Number of pixels inside the contour for {image_file}: {pixel_count}")
+#         print(f"Number of pixels inside the contour for {image_file}: {pixel_count}")
 
-        # cv2.imshow(f"Contour Image for {image_file}", contour_image)
-        cv2.waitKey(0)
+#         # cv2.imshow(f"Contour Image for {image_file}", contour_image)
+#         cv2.waitKey(0)
 
-        pixel_counts[image_file] = pixel_count
+#         pixel_counts[image_file] = pixel_count
+
+#     cv2.destroyAllWindows()
+
+#     return pixel_counts
+
+
+def process_images(image,image_path):
+    # image_path = os.path(image)
+    contour_image, pixel_count = extract_blue_contour(image_path)
+   
+
+    # print(f"Number of pixels inside the contour for {image_file}: {pixel_count}")
+
+     # cv2.imshow(f"Contour Image for {image_file}", contour_image)
+     #cv2.waitKey(0)
+
+    #pixel_counts[image] = pixel_count
 
     cv2.destroyAllWindows()
 
-    return pixel_counts
+    return pixel_count

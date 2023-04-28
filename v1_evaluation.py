@@ -32,9 +32,9 @@ def load_evaluation_images(evaluation_path, additional_input):
         print(f"Loaded evaluation image {file}")
 
         # Detect the coin in the image
-        coin_detected = detect_coin(image, min_radius, max_radius)
+        best_circle = detect_coin(image, min_radius, max_radius)[0]
 
-        display_coin_detection(image, coin_detected)
+        # display_coin_detection(image, best_circle)
 
     # Find the maximum width and height of the evaluation images
     max_width = max([img.shape[1] for img in evaluation_images])
