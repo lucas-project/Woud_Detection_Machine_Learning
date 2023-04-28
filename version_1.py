@@ -1,3 +1,4 @@
+import math
 import os
 import json
 import numpy as np
@@ -20,7 +21,7 @@ import re
 import matplotlib.pyplot as plt
 from skimage import measure
 from v1_border import build_unet, display_json_masks, extract_wound_area, load_images_and_masks, extract_blue_contour, process_images
-from v1_coin import display_coin_detection, detect_coin, calculate_wound_area, estimate_actual_area
+from v1_coin import calculate_actual_coin_area, calculate_actual_wound_area, calculate_ratio_wound_image, display_coin_detection, detect_coin, calculate_wound_area, estimate_actual_area
 from v1_colour import calculate_color_percentage, quantize_image, extract_color_information
 from v1_evaluation import load_evaluation_images
 
@@ -37,8 +38,8 @@ if not os.path.exists(output_directory):
     os.makedirs(output_directory)
 
 #pixel coount of the wound
-pixel_counts = process_images(input_directory)
-print(pixel_counts)
+wound_pixel = process_images(input_directory)
+print(wound_pixel)
 
 for image_file in os.listdir(input_directory):
     if image_file.endswith('.jpg'):
@@ -129,11 +130,18 @@ for i, (image, predicted_mask) in enumerate(zip(evaluation_images, predicted_mas
 # coin size
 COIN_DIAMETER_MM = 28.0  # Diameter of a 2-dollar coin in millimeters
 
+
 image_path = evaluation_path  
 image = cv2.imread(image_path)
 
 # Detect the 2-dollar coin
 best_circle = detect_coin(image, min_radius=30, max_radius=100) #should be put in front of line 104?
+
+# Get the actual pixel of wound area
+coin_actual_area = calculate_actual_coin_area(COIN_DIAMETER_MM)
+ratio_coin = best_circle[1]
+ratio_wound = calculate_ratio_wound_image(wound_pixel,image)
+calculate_actual_wound_area(ratio_coin, ratio_wound, coin_actual_area)
 
 # Detect percentage of each colour
 for i, binary_mask in enumerate(binary_masks):

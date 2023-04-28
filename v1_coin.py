@@ -1,3 +1,4 @@
+import math
 import numpy as np
 import cv2
 import matplotlib.pyplot as plt
@@ -73,7 +74,12 @@ def detect_coin(image, min_radius, max_radius):
         
         # Draw the best circle
         if best_circle is not None:
-            return best_circle
+            # #ratio of circle area to img area
+            circle_area = math.pi * radius**2
+            image_area = image.shape[0] * image.shape[1]
+            ratio = circle_area / image_area
+            # print(f"Ratio of circle area to image area: {ratio:.6f}")
+            return best_circle, ratio
             # x, y, radius = best_circle
             # diameter = 2 * radius
             # print(f"Circle diameter: {diameter}")
@@ -84,12 +90,22 @@ def detect_coin(image, min_radius, max_radius):
         # height, width, channels = img.shape
         # print(f"Image size: {width}x{height}")
 
-        # #ratio of circle area to img area
-        # circle_area = math.pi * radius**2
-        # image_area = img.shape[0] * img.shape[1]
-        # ratio = circle_area / image_area
-        # print(f"Ratio of circle area to image area: {ratio:.6f}")
-    
+def calculate_actual_wound_area(ratio_coin, ratio_wound, coin_actual_area):
+    # ratio = circle_area / image_area
+    # print(f"Ratio of circle area to image area: {ratio:.6f}")
+    # print(f"Circle diameter: {diameter}")
+    # coin_actual_size = 2  # Diameter of the 2-dollar coin in centimeters
+    wound_actual_size = coin_actual_area / ratio_coin * ratio_wound
+    return wound_actual_size
+
+def calculate_ratio_wound_image(wound_pixel,image):
+    image_area = image.shape[0] * image.shape[1]
+    ratio_wound = wound_pixel / image_area
+    return ratio_wound
+
+def calculate_actual_coin_area(diameter):
+    coin_actual_area = math.pi * (diameter / 2) ** 2  # Area of a 2-dollar coin in millimeters squared
+    return coin_actual_area
 
 # Function to calculate the wound area in pixels
 def calculate_wound_area(mask):
