@@ -3,6 +3,10 @@ import numpy as np
 import cv2
 import matplotlib.pyplot as plt
 
+from v1_border import process_images
+
+
+
 # Diaplay detection result
 # def display_coin_detection(image, coin_detected, wound_area=None):
 #     if coin_detected is not None:
@@ -16,7 +20,8 @@ import matplotlib.pyplot as plt
 
 #     plt.imshow(image)
 #     plt.show()
-def display_coin_detection(image, best_circle, wound_area=None):
+
+def display_coin_detection(best_circle, wound_area=None):
     if best_circle is not None:
         x, y, radius = best_circle
         diameter = 2 * radius
@@ -34,7 +39,7 @@ def display_coin_detection(image, best_circle, wound_area=None):
 
 
 # Function to detect the 2-dollar coin using the Hough Circle Transform
-def detect_coin(image, min_radius, max_radius):
+def detect_coin(min_radius, max_radius):
     if image is None:
         print("Error loading the image.")
         return None
@@ -98,7 +103,8 @@ def calculate_actual_wound_area(ratio_coin, ratio_wound, coin_actual_area):
     wound_actual_size = coin_actual_area / ratio_coin * ratio_wound
     return wound_actual_size
 
-def calculate_ratio_wound_image(wound_pixel,image):
+def calculate_ratio_wound_image(wound_pixel):
+    wound_pixel = process_images(image)
     image_area = image.shape[0] * image.shape[1]
     ratio_wound = wound_pixel / image_area
     return ratio_wound

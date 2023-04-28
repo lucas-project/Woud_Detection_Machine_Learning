@@ -37,9 +37,7 @@ output_directory = 'contour_processed/'
 if not os.path.exists(output_directory):
     os.makedirs(output_directory)
 
-#pixel coount of the wound
-wound_pixel = process_images(input_directory)
-print(wound_pixel)
+
 
 for image_file in os.listdir(input_directory):
     if image_file.endswith('.jpg'):
@@ -124,7 +122,7 @@ for i, (image, predicted_mask) in enumerate(zip(evaluation_images, predicted_mas
     wound_area = extract_wound_area(image, binary_mask)
     
     display_image = convert_image_for_display(image)
-    display_coin_detection(display_image, best_circle, wound_area=wound_area)#draw
+    # display_coin_detection(display_image, best_circle, wound_area=wound_area)#draw
 
 
 # coin size
@@ -133,15 +131,6 @@ COIN_DIAMETER_MM = 28.0  # Diameter of a 2-dollar coin in millimeters
 
 image_path = evaluation_path  
 image = cv2.imread(image_path)
-
-# Detect the 2-dollar coin
-best_circle = detect_coin(image, min_radius=30, max_radius=100) #should be put in front of line 104?
-
-# Get the actual pixel of wound area
-coin_actual_area = calculate_actual_coin_area(COIN_DIAMETER_MM)
-ratio_coin = best_circle[1]
-ratio_wound = calculate_ratio_wound_image(wound_pixel,image)
-calculate_actual_wound_area(ratio_coin, ratio_wound, coin_actual_area)
 
 # Detect percentage of each colour
 for i, binary_mask in enumerate(binary_masks):
@@ -165,5 +154,22 @@ for i in range(len(evaluation_images)):
 
 # Save the model
 model.save('wound_segmentation_model.h5')
+
+
+#coin related scale wound area
+image_test = cv2.imread('coin.jpg')
+
+#pixel coount of the wound
+wound_pixel = process_images(image_test)
+# print(wound_pixel)
+
+# Detect the 2-dollar coin
+best_circle = detect_coin(image_test, min_radius=30, max_radius=100) #should be put in front of line 104?
+
+# Get the actual pixel of wound area
+coin_actual_area = calculate_actual_coin_area(COIN_DIAMETER_MM)
+ratio_coin = best_circle[1]
+ratio_wound = calculate_ratio_wound_image(wound_pixel,image_test)
+calculate_actual_wound_area(ratio_coin, ratio_wound, coin_actual_area)
 
 
