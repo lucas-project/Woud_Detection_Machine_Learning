@@ -139,7 +139,7 @@ def estimate_actual_size(image, binary_mask, coin_detected):
     # Calculate the real-world measurements
     # Temorary! Do elsewhere!  
     coin_radius_mm = 14.25 # Radius of an Australian $2 coin in millimeters
-    pixels_to_metric_ratio = coin_radius / coin_radius
+    pixels_to_metric_ratio = coin_radius / coin_radius_mm
     rect_size_mm = rect[1] / pixels_to_metric_ratio
     
     print(f'The wound is {rect_size_mm[1]}mm wide, and {rect_size_mm[1]}mm long')   # Length and width are arbitrary.
