@@ -1,26 +1,17 @@
 import os
-import json
 import numpy as np
 import cv2
 import tensorflow as tf
-import requests
-from PIL import Image
-from io import BytesIO
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Conv2D, MaxPooling2D, UpSampling2D, Concatenate, Activation
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.losses import BinaryCrossentropy
-from tensorflow.keras.metrics import MeanIoU
 from sklearn.model_selection import train_test_split
-from tensorflow.keras.layers import BatchNormalization
 from tensorflow.keras.callbacks import EarlyStopping
-from tensorflow.keras.layers import BatchNormalization
 import re
 import matplotlib.pyplot as plt
 from skimage import measure
 from v1_border import build_unet, display_json_masks, extract_wound_area, load_images_and_masks, extract_blue_contour, process_image, process_images
-from v1_coin import display_coin_detection, detect_coin, calculate_wound_area, estimate_actual_area, calculate_actual_coin_area, calculate_ratio_wound_image, calculate_actual_wound_area
+from v1_coin import display_coin_detection, detect_coin, calculate_actual_coin_area, calculate_ratio_wound_image, calculate_actual_wound_area
 from v1_colour import calculate_color_percentage, quantize_image, extract_color_information
 from v1_evaluation import load_evaluation_images
 
@@ -78,7 +69,7 @@ print(f"wound/image ratio is :{ratio_wound}")
 print(f"wound area is :{wound_area}")
 
 # load_images_and_masks
-X, y = load_images_and_masks(images_json_path, images_png_path, masks_json_path, masks_png_path)
+X, y = load_images_and_masks(images_json_path, masks_json_path)
 
 # Display the JSON format masking images
 # display_json_masks(images_json_path, masks_json_path, y)
@@ -123,9 +114,16 @@ val_generator = zip(image_datagen.flow(X_val, batch_size=batch_size, seed=42),
 
 early_stopping = EarlyStopping(monitor='val_loss', patience=5, verbose=1, restore_best_weights=True)
 
-model.fit(train_generator, steps_per_epoch=len(X_train) // batch_size, validation_data=val_generator,
-          validation_steps=len(X_val) // batch_size, epochs=17)
+history = model.fit(train_generator, steps_per_epoch=len(X_train) // batch_size, validation_data=val_generator,
+          validation_steps=len(X_val) // batch_size, epochs=14)
 
+plt.plot(history.history['loss'], label='Training Loss')
+plt.plot(history.history['val_loss'], label='Validation Loss')
+plt.xlabel('Epoch')
+plt.ylabel('Loss')
+plt.legend()
+plt.title('Training and Validation Loss')
+plt.show()
 
 additional_input = True  
 evaluation_images = load_evaluation_images(evaluation_path, additional_input)
