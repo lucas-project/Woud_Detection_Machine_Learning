@@ -125,7 +125,7 @@ val_generator = zip(image_datagen.flow(X_val, batch_size=batch_size, seed=42),
 early_stopping = EarlyStopping(monitor='val_loss', patience=5, verbose=1, restore_best_weights=True)
 
 history = model.fit(train_generator, steps_per_epoch=len(X_train) // batch_size, validation_data=val_generator,
-          validation_steps=len(X_val) // batch_size, epochs=15)
+          validation_steps=len(X_val) // batch_size, epochs=1)
 
 plt.plot(history.history['loss'], label='Training Loss')
 plt.plot(history.history['val_loss'], label='Validation Loss')
