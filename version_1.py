@@ -10,7 +10,7 @@ from tensorflow.keras.callbacks import EarlyStopping
 import re
 import matplotlib.pyplot as plt
 from skimage import measure
-from v1_border import build_unet, display_json_masks, extract_wound_area, load_images_and_masks, extract_blue_contour, process_image, process_images
+from v1_border import build_unet, display_json_masks, extract_wound_area, load_images_and_masks, extract_blue_contour, process_image, process_images, split_json_objects
 from v1_coin import display_coin_detection, detect_coin, calculate_actual_coin_area, calculate_ratio_wound_image, calculate_actual_wound_area
 from v1_colour import calculate_color_percentage, quantize_image, extract_color_information
 from v1_evaluation import load_evaluation_images
@@ -23,6 +23,16 @@ masks_png_path = 'fake_png_2/'
 evaluation_path = 'fake_evaluation/'
 input_directory = 'contour/'  
 output_directory = 'contour_processed/' 
+input_file = 'splited_json/1.json'
+output_folder = 'splited_json/'
+
+
+
+
+# This function only used when need to split .json file from labelbox to small .json file,  
+# file name needed to changed each time to generate correct file name.
+
+# split_json_objects(input_file, output_folder)
 
 # coin size
 COIN_DIAMETER_MM = 28.0  # Diameter of a 2-dollar coin in millimeters
@@ -42,7 +52,7 @@ for image_file in os.listdir(input_directory):
         cv2.imwrite(output_path, contour_image)
 
         # Display the output image
-        cv2.imshow('Contour Image', contour_image)
+        # cv2.imshow('Contour Image', contour_image)
         cv2.waitKey(0)
 
 cv2.destroyAllWindows()
@@ -115,7 +125,7 @@ val_generator = zip(image_datagen.flow(X_val, batch_size=batch_size, seed=42),
 early_stopping = EarlyStopping(monitor='val_loss', patience=5, verbose=1, restore_best_weights=True)
 
 history = model.fit(train_generator, steps_per_epoch=len(X_train) // batch_size, validation_data=val_generator,
-          validation_steps=len(X_val) // batch_size, epochs=14)
+          validation_steps=len(X_val) // batch_size, epochs=15)
 
 plt.plot(history.history['loss'], label='Training Loss')
 plt.plot(history.history['val_loss'], label='Validation Loss')
@@ -178,5 +188,7 @@ for i in range(len(evaluation_images)):
 
 # Save the model
 model.save('wound_segmentation_model.h5')
+
+
 
 

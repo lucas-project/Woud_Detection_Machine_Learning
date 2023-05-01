@@ -14,6 +14,8 @@ import matplotlib.pyplot as plt
 from skimage import measure
 import concurrent.futures
 import joblib
+import json
+import shutil
 
 
 evaluation_path = 'fake_evaluation/'
@@ -327,4 +329,22 @@ def process_image(image,image_path):
     cv2.destroyAllWindows()
 
     return pixel_count
+
+
+def split_json_objects(input_file, output_folder):
+    with open(input_file, 'r') as infile:
+        data = json.load(infile)
+
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
+
+    file_number = 238
+
+    for obj in data:
+        output_file = os.path.join(output_folder, f"{file_number}.json")
+        with open(output_file, 'w') as outfile:
+            json.dump(obj, outfile)
+        file_number += 1
+
+
 

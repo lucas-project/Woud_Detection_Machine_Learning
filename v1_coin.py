@@ -16,7 +16,7 @@ def display_coin_detection(image, coin_detected, wound_area):
                 x, y = point
                 cv2.circle(image, (x, y), 1, (0, 0, 255), -1)
 
-    plt.imshow(image)
+    # plt.imshow(image)
     plt.show()
 
 def calculate_actual_wound_area(ratio_coin, ratio_wound, coin_actual_area):
