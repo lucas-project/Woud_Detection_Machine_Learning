@@ -26,9 +26,6 @@ output_directory = 'contour_processed/'
 input_file = 'splited_json/1.json'
 output_folder = 'splited_json/'
 
-
-
-
 # This function only used when need to split .json file from labelbox to small .json file,  
 # file name needed to changed each time to generate correct file name.
 
