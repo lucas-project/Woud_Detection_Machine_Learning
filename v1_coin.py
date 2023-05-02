@@ -152,35 +152,38 @@ def estimate_actual_size(image, binary_mask, coin_detected):
     return rect
 
 
+def main():
+    input_directory = 'fake_evaluation/'
 
-input_directory = 'fake_evaluation/'
+    # Coin size
+    COIN_DIAMETER_MM = 28.0  # Diameter of a 2-dollar coin in millimeters
 
-# Coin size
-COIN_DIAMETER_MM = 28.0  # Diameter of a 2-dollar coin in millimeters
+    # Process images in the input directory
+    for image_file in os.listdir(input_directory):
+        if image_file.endswith('.jpg'):
+            input_path = os.path.join(input_directory, image_file)
 
-# Process images in the input directory
-for image_file in os.listdir(input_directory):
-    if image_file.endswith('.jpg'):
-        input_path = os.path.join(input_directory, image_file)
+            # Read image
+            image_test = cv2.imread(input_path)
 
-        # Read image
-        image_test = cv2.imread(input_path)
+            # Pixel count of the wound
+            wound_pixel = process_image(image_test, input_path)
 
-        # Pixel count of the wound
-        wound_pixel = process_image(image_test, input_path)
+            # Detect the 2-dollar coin
+            best_circle, ratio_coin = detect_coin(image_test, min_radius=30, max_radius=100)
+            # print(best_circle)
 
-        # Detect the 2-dollar coin
-        best_circle, ratio_coin = detect_coin(image_test, min_radius=30, max_radius=100)
-        print(best_circle)
+            # Get the actual pixel of wound area
+            coin_actual_area = calculate_actual_coin_area(COIN_DIAMETER_MM)
+            contour_image, pixel_count, ratio_wound = extract_blue_contour(input_path)
+            wound_area = calculate_actual_wound_area(ratio_coin, ratio_wound, coin_actual_area)
+            print(f"coin area is :{coin_actual_area}")
+            print(f"coin/image ratio is :{ratio_coin}")
+            print(f"wound/image ratio is :{ratio_wound}")
+            print(f"wound area is :{wound_area}")
 
-        # Get the actual pixel of wound area
-        coin_actual_area = calculate_actual_coin_area(COIN_DIAMETER_MM)
-        contour_image, pixel_count, ratio_wound = extract_blue_contour(input_path)
-        wound_area = calculate_actual_wound_area(ratio_coin, ratio_wound, coin_actual_area)
-        print(f"coin area is :{coin_actual_area}")
-        print(f"coin/image ratio is :{ratio_coin}")
-        print(f"wound/image ratio is :{ratio_wound}")
-        print(f"wound area is :{wound_area}")
+            # Display the coin detection result
+            display_coin_detection(image_test, best_circle, None)
 
-        # Display the coin detection result
-        display_coin_detection(image_test, best_circle, None)
+if __name__ == "__main__":
+    main()

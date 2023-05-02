@@ -64,16 +64,15 @@ wound_pixel, wound_ratio = process_image(image_test,image_path)
 
 # Detect the 2-dollar coin
 best_circle = detect_coin(image_test, min_radius=30, max_radius=100) #should be put in front of line 104?
-print(best_circle)
 
 # Get the actual pixel of wound area
 coin_actual_area = calculate_actual_coin_area(COIN_DIAMETER_MM)
 ratio_coin = best_circle[1]
 # ratio_wound = calculate_ratio_wound_image(wound_pixel,image_test,image_path)
 wound_area = calculate_actual_wound_area(ratio_coin, wound_ratio, coin_actual_area)
-print(f"coin area is :{coin_actual_area}")
-print(f"coin/image ratio is :{ratio_coin}")
-print(f"wound/image ratio is :{wound_ratio}")
+print(f"coin's area is :{coin_actual_area}")
+print(f"coin/image's ratio is :{ratio_coin}")
+print(f"wound/image's ratio is :{wound_ratio}")
 print(f"wound area is :{wound_area}")
 
 # load_images_and_masks
@@ -124,7 +123,7 @@ val_generator = zip(image_datagen.flow(X_val, batch_size=batch_size, seed=42),
 early_stopping = EarlyStopping(monitor='val_loss', patience=5, verbose=1, restore_best_weights=True)
 
 history = model.fit(train_generator, steps_per_epoch=len(X_train) // batch_size, validation_data=val_generator,
-          validation_steps=len(X_val) // batch_size, epochs=1)
+          validation_steps=len(X_val) // batch_size, epochs=5)
 
 plt.plot(history.history['loss'], label='Training Loss')
 plt.plot(history.history['val_loss'], label='Validation Loss')
@@ -154,16 +153,13 @@ for i, (image, predicted_mask) in enumerate(zip(evaluation_images, predicted_mas
     wound_area = extract_wound_area(image, binary_mask)
     
     display_image = convert_image_for_display(image)
-    display_coin_detection(display_image, None, wound_area=wound_area)
 
+    # Detect the 2-dollar coin for each image
+    best_circle, ratio_coin = detect_coin(display_image, min_radius=30, max_radius=100)
 
+    # Display the coin detection result
+    display_coin_detection(display_image, best_circle, wound_area=wound_area)
 
-
-image_path = evaluation_path  
-image = cv2.imread(image_path)
-
-# Detect the 2-dollar coin
-coin = detect_coin(image, min_radius=30, max_radius=100)
 
 # Detect percentage of each colour
 for i, binary_mask in enumerate(binary_masks):
