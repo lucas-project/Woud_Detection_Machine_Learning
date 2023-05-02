@@ -3,7 +3,7 @@ import numpy as np
 import cv2
 import matplotlib.pyplot as plt
 import os
-from v1_border import process_image
+from v1_border import extract_blue_contour, process_image
 
 # Diaplay detection result
 def display_coin_detection(image, coin_detected, wound_area):
@@ -173,7 +173,7 @@ for image_file in os.listdir(input_directory):
 
         # Get the actual pixel of wound area
         coin_actual_area = calculate_actual_coin_area(COIN_DIAMETER_MM)
-        ratio_wound = calculate_ratio_wound_image(wound_pixel, image_test, input_path)
+        contour_image, pixel_count, ratio_wound = extract_blue_contour(input_path)
         wound_area = calculate_actual_wound_area(ratio_coin, ratio_wound, coin_actual_area)
         print(f"coin area is :{coin_actual_area}")
         print(f"coin/image ratio is :{ratio_coin}")

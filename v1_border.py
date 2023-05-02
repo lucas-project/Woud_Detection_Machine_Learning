@@ -260,6 +260,17 @@ def extract_blue_contour(image_path):
     image = cv2.imread(image_path)
     if image is None:
         raise ValueError(f"Unable to read image file {image_path}. Check file path/integrity")
+    
+    # Get the dimensions of the original image
+    original_height, original_width = image.shape[:2]
+
+    # Determine whether the original image's height or width is bigger
+    if original_height > original_width:
+        long_side = original_height
+        short_side = original_width
+    else:
+        long_side = original_width
+        short_side = original_height
 
     # Resize the image while maintaining its aspect ratio
     target_size = 256
@@ -290,11 +301,13 @@ def extract_blue_contour(image_path):
     # Count the pixels inside the filled contour
     pixel_count = np.count_nonzero(filled_contour)
 
-    # Get the dimensions of the resized image
-    height, width = image.shape[:2]
+    # Get the ratio of the resized image to origical image
+    resize_ratio = 256 / long_side 
+    resize_short_size = resize_ratio * short_side
+
 
     # Calculate the total number of pixels in the resized image
-    total_pixels = height * width
+    total_pixels = 256 * resize_short_size
 
     # Calculate the ratio of pixels inside the filled contour to the total pixels in the resized image
     pixel_ratio = pixel_count / total_pixels
@@ -322,7 +335,8 @@ def process_images(directory):
         image_path = os.path.join(directory, image_file)
         contour_image, pixel_count, pixel_ratio = extract_blue_contour(image_path)
 
-        print(f"Number of pixels inside the contour for {image_file}: {pixel_count}")
+        print(f"Number of pixels inside the contour for {image_file}: {pixel_count}\n")
+        
         print(f"Ratio of pixels inside the contour for {image_file}: {pixel_ratio}")
 
         # cv2.imshow(f"Contour Image for {image_file}", contour_image)
