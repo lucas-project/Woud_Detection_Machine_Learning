@@ -14,6 +14,7 @@ from v1_border import build_unet, display_json_masks, extract_wound_area, load_i
 from v1_coin import display_coin_detection, detect_coin, calculate_actual_coin_area, calculate_ratio_wound_image, calculate_actual_wound_area
 from v1_colour import calculate_color_percentage, quantize_image, extract_color_information
 from v1_evaluation import load_evaluation_images
+import time
 
 # Set up path
 images_json_path = 'fake_wound/'
@@ -107,8 +108,9 @@ def dice_coefficient(y_true, y_pred):
     intersection = tf.reduce_sum(y_true_f * y_pred_f)
     return (2. * intersection + 1.) / (tf.reduce_sum(y_true_f) + tf.reduce_sum(y_pred_f) + 1.)
 
-# Compile the model
-model.compile(optimizer=Adam(), loss=BinaryCrossentropy(), metrics=[dice_coefficient])
+# Compile the model, learning rate default is 0.001
+optimizer = Adam(learning_rate = 0.0005)
+model.compile(optimizer=optimizer, loss=BinaryCrossentropy(), metrics=[dice_coefficient])
 
 # Train the model
 batch_size = 8  
@@ -122,7 +124,7 @@ val_generator = zip(image_datagen.flow(X_val, batch_size=batch_size, seed=42),
 early_stopping = EarlyStopping(monitor='val_loss', patience=5, verbose=1, restore_best_weights=True)
 
 history = model.fit(train_generator, steps_per_epoch=len(X_train) // batch_size, validation_data=val_generator,
-          validation_steps=len(X_val) // batch_size, epochs=1)
+          validation_steps=len(X_val) // batch_size, epochs=24)
 
 plt.plot(history.history['loss'], label='Training Loss')
 plt.plot(history.history['val_loss'], label='Validation Loss')
@@ -184,7 +186,8 @@ for i in range(len(evaluation_images)):
     cv2.destroyAllWindows()
 
 # Save the model
-model.save('wound_segmentation_model.h5')
+timestamp = int(time.time())
+model.save(f'models/wound_segmentation_model_{timestamp}.h5')
 
 
 

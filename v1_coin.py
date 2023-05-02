@@ -2,7 +2,7 @@ import math
 import numpy as np
 import cv2
 import matplotlib.pyplot as plt
-
+import os
 from v1_border import process_image
 
 # Diaplay detection result
@@ -16,7 +16,7 @@ def display_coin_detection(image, coin_detected, wound_area):
                 x, y = point
                 cv2.circle(image, (x, y), 1, (0, 0, 255), -1)
 
-    # plt.imshow(image)
+    plt.imshow(image)
     plt.show()
 
 def calculate_actual_wound_area(ratio_coin, ratio_wound, coin_actual_area):
@@ -47,11 +47,11 @@ def detect_coin(image, min_radius, max_radius):
     image = np.uint8(image)
 
     gray = cv2.cvtColor(image,cv2.COLOR_BGR2GRAY)
-    blur = cv2.GaussianBlur(gray, (7,7),1.2)
-    canny = cv2.Canny(blur, 50, 255)
+    blur = cv2.GaussianBlur(gray, (9,9),1.5)
+    canny = cv2.Canny(blur, 100, 255)
     # gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     # circles = cv2.HoughCircles(gray, cv2.HOUGH_GRADIENT, 1, minDist=30, param1=50, param2=30, minRadius=min_radius, maxRadius=max_radius)
-    circles = cv2.HoughCircles(canny, cv2.HOUGH_GRADIENT, 1, 20, param1=50, param2=30, minRadius=0, maxRadius=0)
+    circles = cv2.HoughCircles(canny, cv2.HOUGH_GRADIENT, 1, 20, param1=100, param2=40, minRadius=0, maxRadius=0)
 
     # if circles is not None:
     #     circles = np.round(circles[0, :]).astype("int")
@@ -148,3 +148,37 @@ def estimate_actual_size(image, binary_mask, coin_detected):
     
     
     return rect
+
+
+
+input_directory = 'fake_evaluation/'
+
+# Coin size
+COIN_DIAMETER_MM = 28.0  # Diameter of a 2-dollar coin in millimeters
+
+# Process images in the input directory
+for image_file in os.listdir(input_directory):
+    if image_file.endswith('.jpg'):
+        input_path = os.path.join(input_directory, image_file)
+
+        # Read image
+        image_test = cv2.imread(input_path)
+
+        # Pixel count of the wound
+        wound_pixel = process_image(image_test, input_path)
+
+        # Detect the 2-dollar coin
+        best_circle, ratio_coin = detect_coin(image_test, min_radius=30, max_radius=100)
+        print(best_circle)
+
+        # Get the actual pixel of wound area
+        coin_actual_area = calculate_actual_coin_area(COIN_DIAMETER_MM)
+        ratio_wound = calculate_ratio_wound_image(wound_pixel, image_test, input_path)
+        wound_area = calculate_actual_wound_area(ratio_coin, ratio_wound, coin_actual_area)
+        print(f"coin area is :{coin_actual_area}")
+        print(f"coin/image ratio is :{ratio_coin}")
+        print(f"wound/image ratio is :{ratio_wound}")
+        print(f"wound area is :{wound_area}")
+
+        # Display the coin detection result
+        display_coin_detection(image_test, best_circle, None)
