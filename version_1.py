@@ -39,7 +39,7 @@ if not os.path.exists(output_directory):
     os.makedirs(output_directory)
 
 #pixel coount of the wound
-pixel_counts = process_images(input_directory)
+pixel_counts, pixel_ratios = process_images(input_directory)
 print(pixel_counts)
 
 for image_file in os.listdir(input_directory):

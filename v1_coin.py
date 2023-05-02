@@ -41,7 +41,7 @@ def calculate_actual_coin_area(diameter):
 def detect_coin(image, min_radius, max_radius):
     if image is None:
         print("Error loading the image.")
-        return None
+        return None, None
 
     # Convert image to 8-bit format
     image = np.uint8(image)
@@ -94,6 +94,8 @@ def detect_coin(image, min_radius, max_radius):
         # height, width, channels = img.shape
         # print(f"Image size: {width}x{height}")
     
+    # Return None, None if no circles were found
+    return None, None
 
 # Function to calculate the wound area in pixels
 def calculate_wound_area(mask):
