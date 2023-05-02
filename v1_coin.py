@@ -19,19 +19,19 @@ def display_coin_detection(image, coin_detected, wound_area):
     plt.imshow(image)
     plt.show()
 
-def calculate_actual_wound_area(ratio_coin, ratio_wound, coin_actual_area):
+def calculate_actual_wound_area(ratio_coin, coin_actual_area, wound_ratio):
     # ratio = circle_area / image_area
     # print(f"Ratio of circle area to image area: {ratio:.6f}")
     # print(f"Circle diameter: {diameter}")
     # coin_actual_size = 2  # Diameter of the 2-dollar coin in centimeters
-    wound_actual_size = coin_actual_area / ratio_coin * ratio_wound
+    wound_actual_size = coin_actual_area / ratio_coin * wound_ratio
     return wound_actual_size
 
 def calculate_ratio_wound_image(wound_pixel,image,image_path):
-    wound_pixel = process_image(image,image_path)
+    wound_pixel, wound_ratio = process_image(image,image_path)
     image_area = image.shape[0] * image.shape[1]
-    ratio_wound = wound_pixel / image_area
-    return ratio_wound
+    # ratio_wound = wound_pixel / image_area
+    return wound_ratio
 
 def calculate_actual_coin_area(diameter):
     coin_actual_area = math.pi * (diameter / 2) ** 2  # Area of a 2-dollar coin in millimeters squared

@@ -290,7 +290,17 @@ def extract_blue_contour(image_path):
     # Count the pixels inside the filled contour
     pixel_count = np.count_nonzero(filled_contour)
 
-    return contour_image, pixel_count
+    # Get the dimensions of the resized image
+    height, width = image.shape[:2]
+
+    # Calculate the total number of pixels in the resized image
+    total_pixels = height * width
+
+    # Calculate the ratio of pixels inside the filled contour to the total pixels in the resized image
+    pixel_ratio = pixel_count / total_pixels
+
+
+    return contour_image, pixel_count, pixel_ratio
 
 
 
@@ -305,30 +315,33 @@ def process_images(directory):
     image_files = sorted(image_files, key=lambda x: int(re.search(r'\d+', x).group()))
 
     pixel_counts = {}
+    pixel_ratios = {}
 
     # Process each image file
     for image_file in image_files:
         image_path = os.path.join(directory, image_file)
-        contour_image, pixel_count = extract_blue_contour(image_path)
+        contour_image, pixel_count, pixel_ratio = extract_blue_contour(image_path)
 
         print(f"Number of pixels inside the contour for {image_file}: {pixel_count}")
+        print(f"Ratio of pixels inside the contour for {image_file}: {pixel_ratio}")
 
         # cv2.imshow(f"Contour Image for {image_file}", contour_image)
         cv2.waitKey(0)
 
         pixel_counts[image_file] = pixel_count
+        pixel_ratios[image_file] = pixel_ratio
 
     cv2.destroyAllWindows()
 
-    return pixel_counts
+    return pixel_counts, pixel_ratios
 
 def process_image(image,image_path):
     # image_path = os.path(image)
-    contour_image, pixel_count = extract_blue_contour(image_path)
+    contour_image, pixel_count, pixel_ratio = extract_blue_contour(image_path)
 
     cv2.destroyAllWindows()
 
-    return pixel_count
+    return pixel_count, pixel_ratio
 
 
 def split_json_objects(input_file, output_folder):

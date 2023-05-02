@@ -46,7 +46,7 @@ for image_file in os.listdir(input_directory):
     if image_file.endswith('.jpg'):
         input_path = os.path.join(input_directory, image_file)
         output_path = os.path.join(output_directory, image_file)
-        contour_image, pixel_count = extract_blue_contour(input_path) 
+        contour_image, pixel_count, pixel_ratio = extract_blue_contour(input_path) 
         cv2.imwrite(output_path, contour_image)
 
         # Display the output image
@@ -59,7 +59,7 @@ cv2.destroyAllWindows()
 image_test = cv2.imread('contour/1.jpg')
 image_path = 'contour/1.jpg'
 #pixel coount of the wound
-wound_pixel = process_image(image_test,image_path)
+wound_pixel, wound_ratio = process_image(image_test,image_path)
 # print(wound_pixel)
 
 # Detect the 2-dollar coin
@@ -69,11 +69,11 @@ print(best_circle)
 # Get the actual pixel of wound area
 coin_actual_area = calculate_actual_coin_area(COIN_DIAMETER_MM)
 ratio_coin = best_circle[1]
-ratio_wound = calculate_ratio_wound_image(wound_pixel,image_test,image_path)
-wound_area = calculate_actual_wound_area(ratio_coin, ratio_wound, coin_actual_area)
+# ratio_wound = calculate_ratio_wound_image(wound_pixel,image_test,image_path)
+wound_area = calculate_actual_wound_area(ratio_coin, wound_ratio, coin_actual_area)
 print(f"coin area is :{coin_actual_area}")
 print(f"coin/image ratio is :{ratio_coin}")
-print(f"wound/image ratio is :{ratio_wound}")
+print(f"wound/image ratio is :{wound_ratio}")
 print(f"wound area is :{wound_area}")
 
 # load_images_and_masks
@@ -124,7 +124,7 @@ val_generator = zip(image_datagen.flow(X_val, batch_size=batch_size, seed=42),
 early_stopping = EarlyStopping(monitor='val_loss', patience=5, verbose=1, restore_best_weights=True)
 
 history = model.fit(train_generator, steps_per_epoch=len(X_train) // batch_size, validation_data=val_generator,
-          validation_steps=len(X_val) // batch_size, epochs=24)
+          validation_steps=len(X_val) // batch_size, epochs=1)
 
 plt.plot(history.history['loss'], label='Training Loss')
 plt.plot(history.history['val_loss'], label='Validation Loss')
