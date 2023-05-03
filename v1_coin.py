@@ -152,8 +152,8 @@ def detect_coin(image):
             cv2.circle(image, (x, y), radius, (0, 255, 0), 2)
             cv2.circle(image, (x, y), 2, (0, 0, 255), 3)
             print(f"Ratio of circle area to image area: {ratio:.6f}")
-            cv2.imshow('best circle', image)
-            cv2.waitKey(0)
+            # cv2.imshow('best circle', image)
+            # cv2.waitKey(0)
             return best_circle, ratio
             # x, y, radius = best_circle
             # diameter = 2 * radius
@@ -222,6 +222,8 @@ def estimate_actual_size(image, binary_mask, coin_detected):
     
     return rect
 
+def put_text_on_image(image, text, position, font_scale=1, font=cv2.FONT_HERSHEY_SIMPLEX, color=(0,0,0), thickness=2):
+    cv2.putText(image, text, position, font, font_scale, color, thickness)
 
 def main():
     # input_directory = 'fake_evaluation'
@@ -244,7 +246,7 @@ def main():
 
             # Detect the 2-dollar coin
             best_circle, ratio_coin = detect_coin(image_test)
-            # print(best_circle)
+            print(best_circle)
 
             # Get the actual pixel of wound area
             coin_actual_area = calculate_actual_coin_area(COIN_DIAMETER_MM)
@@ -262,6 +264,13 @@ def main():
 
             # Display the coin detection result
             # display_coin_detection(image_test, best_circle, None)
+            text = f"wound area size is :{wound_area} mm^2"
+            position = (50, 50)  # The position where the text will be placed (x, y)
+            put_text_on_image(image_test, text, position)
+            cv2.imshow("Image with wound size text", image_test)
+            cv2.waitKey(0)
+
+
 
 
 # def test_detect_coin(input_path):
