@@ -53,6 +53,27 @@ def get_average_color(image, x, y, radius, inside=True, thickness=20):
     mean_val = cv2.mean(image, mask=mask)
     return mean_val
 
+def find_circles(image, param2_start, max_attempts):
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    blur = cv2.GaussianBlur(gray, (9, 9), 1.5)
+    canny = cv2.Canny(blur, 100, 255)
+
+    # cv2.imshow('gray', gray)
+    # cv2.imshow('blur', blur)
+    # cv2.imshow('canny', canny)
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
+    circles = None
+    attempt = 0
+
+    while circles is None and attempt < max_attempts:
+        circles = cv2.HoughCircles(canny, cv2.HOUGH_GRADIENT, 1, 20, param1=100, param2=param2_start - attempt * 2)
+        attempt += 1
+
+    return circles
+
+    
+
 # Function to detect the 2-dollar coin using the Hough Circle Transform
 def detect_coin(image):
     
@@ -63,18 +84,19 @@ def detect_coin(image):
     # Convert image to 8-bit format
     image = np.uint8(image)
 
-    gray = cv2.cvtColor(image,cv2.COLOR_BGR2GRAY)
-    blur = cv2.GaussianBlur(gray, (9,9),1.5)
-    canny = cv2.Canny(blur, 100, 255)
+    # gray = cv2.cvtColor(image,cv2.COLOR_BGR2GRAY)
+    # blur = cv2.GaussianBlur(gray, (9,9),1.5)
+    # canny = cv2.Canny(blur, 100, 255)
     # gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     # circles = cv2.HoughCircles(gray, cv2.HOUGH_GRADIENT, 1, minDist=30, param1=50, param2=30, minRadius=min_radius, maxRadius=max_radius)
-    circles = cv2.HoughCircles(canny, cv2.HOUGH_GRADIENT, 1, 20, param1=100, param2=40)
+    # circles = cv2.HoughCircles(canny, cv2.HOUGH_GRADIENT, 1, 20, param1=100, param2=40)
+    circles = find_circles(image,param2_start=40, max_attempts=10)
 
-    cv2.imshow('gray', gray)
-    cv2.imshow('blur', blur)
-    cv2.imshow('canny', canny)
+    # cv2.imshow('gray', gray)
+    # cv2.imshow('blur', blur)
+    # cv2.imshow('canny', canny)
     # cv2.imshow('circle', circles)
-    cv2.waitKey(0)
+    # cv2.waitKey(0)
     # cv2.destroyAllWindows()
 
     # if circles is not None:
@@ -82,8 +104,7 @@ def detect_coin(image):
     #     return circles[0]  # Return the first detected circle
     # else:
     #     return None
-    if circles is None:
-        print(f"cannot find circles.")
+
     if circles is not None: 
         circles = np.uint16(np.around(circles))
         
@@ -98,7 +119,7 @@ def detect_coin(image):
             # cv2.circle(image, (x, y), 2, (0, 0, 255), 3)
             # cv2.imshow('circles', image)
             # cv2.waitKey(0)
-            circle_canny = canny[y - radius:y + radius, x - radius:x + radius]
+            # circle_canny = canny[y - radius:y + radius, x - radius:x + radius]
             
             # Calculate the confidence score for the circle based on edge intensity
             # confidence = np.sum(circle_canny) / (circle_canny.shape[0] * circle_canny.shape[1])
@@ -223,7 +244,7 @@ def main():
 
             # Detect the 2-dollar coin
             best_circle, ratio_coin = detect_coin(image_test)
-            print(best_circle)
+            # print(best_circle)
 
             # Get the actual pixel of wound area
             coin_actual_area = calculate_actual_coin_area(COIN_DIAMETER_MM)
@@ -240,13 +261,13 @@ def main():
             print(f"wound area is :{wound_area}")
 
             # Display the coin detection result
-            display_coin_detection(image_test, best_circle, None)
+            # display_coin_detection(image_test, best_circle, None)
 
 
-def test_detect_coin(input_path):
-    image = cv2.imread(input_path)
-    detect_coin(image)
+# def test_detect_coin(input_path):
+#     image = cv2.imread(input_path)
+#     detect_coin(image)
 
-test_detect_coin('contour/2.jpg')
+# test_detect_coin('contour/6.jpg')
 
-# main()
+main()
