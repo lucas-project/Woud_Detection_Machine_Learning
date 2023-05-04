@@ -15,6 +15,7 @@ from v1_coin import display_coin_detection, detect_coin, calculate_actual_coin_a
 from v1_colour import calculate_color_percentage, quantize_image, extract_color_information
 from v1_evaluation import load_evaluation_images
 import time
+from keras.models import load_model
 
 # Set up path
 images_json_path = 'fake_wound/'
@@ -26,6 +27,7 @@ input_directory = 'contour/'
 output_directory = 'contour_processed/' 
 input_file = 'splited_json/1.json'
 output_folder = 'splited_json/'
+model_path = 'models/wound_segmentation_model_1683183688.h5'
 
 # This function only used when need to split .json file from labelbox to small .json file,  
 # file name needed to changed each time to generate correct file name.
@@ -100,38 +102,54 @@ mask_datagen = ImageDataGenerator(**data_gen_args)
 image_datagen.fit(X_train, augment=True, seed=42)
 mask_datagen.fit(y_train, augment=True, seed=42)
 
-model = build_unet()
+
 def dice_coefficient(y_true, y_pred):
     y_true_f = tf.cast(tf.reshape(y_true, [-1]), tf.float32)
     y_pred_f = tf.cast(tf.reshape(y_pred, [-1]), tf.float32)
     intersection = tf.reduce_sum(y_true_f * y_pred_f)
     return (2. * intersection + 1.) / (tf.reduce_sum(y_true_f) + tf.reduce_sum(y_pred_f) + 1.)
 
-# Compile the model, learning rate default is 0.001
-optimizer = Adam(learning_rate = 0.0005)
-model.compile(optimizer=optimizer, loss=BinaryCrossentropy(), metrics=[dice_coefficient])
+load_old_model = input("Press any key to load an old model, or type 'n' to train a new model: ")
 
-# Train the model
-batch_size = 8  
+if load_old_model.lower() != 'n' and os.path.exists(model_path):
+    # Load the saved model
+    print("Loading saved model...")
+    model = load_model(model_path, custom_objects={'dice_coefficient': dice_coefficient})
+else:
+    # Train a new model
+    print("Training a new model...")
+    model = build_unet()
+    
+    # Compile the model, learning rate default is 0.001
+    optimizer = Adam(learning_rate = 0.0005)
+    model.compile(optimizer=optimizer, loss=BinaryCrossentropy(), metrics=[dice_coefficient])
 
-train_generator = zip(image_datagen.flow(X_train, batch_size=batch_size, seed=42),
-                      mask_datagen.flow(y_train, batch_size=batch_size, seed=42))
+    # Train the model
+    batch_size = 8  
 
-val_generator = zip(image_datagen.flow(X_val, batch_size=batch_size, seed=42),
-                    mask_datagen.flow(y_val, batch_size=batch_size, seed=42))
+    train_generator = zip(image_datagen.flow(X_train, batch_size=batch_size, seed=42),
+                          mask_datagen.flow(y_train, batch_size=batch_size, seed=42))
 
-early_stopping = EarlyStopping(monitor='val_loss', patience=5, verbose=1, restore_best_weights=True)
+    val_generator = zip(image_datagen.flow(X_val, batch_size=batch_size, seed=42),
+                        mask_datagen.flow(y_val, batch_size=batch_size, seed=42))
 
-history = model.fit(train_generator, steps_per_epoch=len(X_train) // batch_size, validation_data=val_generator,
-          validation_steps=len(X_val) // batch_size, epochs=5)
+    early_stopping = EarlyStopping(monitor='val_loss', patience=5, verbose=1, restore_best_weights=True)
 
-plt.plot(history.history['loss'], label='Training Loss')
-plt.plot(history.history['val_loss'], label='Validation Loss')
-plt.xlabel('Epoch')
-plt.ylabel('Loss')
-plt.legend()
-plt.title('Training and Validation Loss')
-plt.show()
+    history = model.fit(train_generator, steps_per_epoch=len(X_train) // batch_size, validation_data=val_generator,
+              validation_steps=len(X_val) // batch_size, epochs=5)
+
+    # Save the trained model
+    model.save(model_path)
+
+if load_old_model.lower() == 'n':
+    plt.plot(history.history['loss'], label='Training Loss')
+    plt.plot(history.history['val_loss'], label='Validation Loss')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.legend()
+    plt.title('Training and Validation Loss')
+    plt.show()
+
 
 additional_input = True  
 evaluation_images = load_evaluation_images(evaluation_path, additional_input)
