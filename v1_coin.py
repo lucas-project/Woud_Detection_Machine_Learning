@@ -279,4 +279,5 @@ def main():
 
 # test_detect_coin('contour/6.jpg')
 
-main()
+if __name__ == "__main__":
+    main()

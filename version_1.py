@@ -63,7 +63,7 @@ wound_pixel, wound_ratio = process_image(image_test,image_path)
 # print(wound_pixel)
 
 # Detect the 2-dollar coin
-best_circle = detect_coin(image_test, min_radius=30, max_radius=100) #should be put in front of line 104?
+best_circle = detect_coin(image_test) #should be put in front of line 104?
 
 # Get the actual pixel of wound area
 coin_actual_area = calculate_actual_coin_area(COIN_DIAMETER_MM)
@@ -155,7 +155,7 @@ for i, (image, predicted_mask) in enumerate(zip(evaluation_images, predicted_mas
     display_image = convert_image_for_display(image)
 
     # Detect the 2-dollar coin for each image
-    best_circle, ratio_coin = detect_coin(display_image, min_radius=30, max_radius=100)
+    best_circle, ratio_coin = detect_coin(display_image)
 
     # Display the coin detection result
     display_coin_detection(display_image, best_circle, wound_area=wound_area)
