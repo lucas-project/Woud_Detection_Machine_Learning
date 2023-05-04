@@ -200,8 +200,10 @@ for i in range(len(evaluation_images)):
     cv2.destroyAllWindows()
 
 # Save the model
-timestamp = int(time.time())
-model.save(f'models/wound_segmentation_model_{timestamp}.h5')
+if load_old_model.lower() == 'n':
+    timestamp = int(time.time())
+    model.save(f'models/wound_segmentation_model_{timestamp}.h5')
+
 
 
 
