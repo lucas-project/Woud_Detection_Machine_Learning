@@ -290,7 +290,7 @@ def extract_blue_contour(image_path):
     # Count the pixels inside the filled contour
     pixel_count = np.count_nonzero(filled_contour)
 
-    return contour_image, pixel_count
+    return contour_image, pixel_count, filled_contour
 
 
 
@@ -309,7 +309,7 @@ def process_images(directory):
     # Process each image file
     for image_file in image_files:
         image_path = os.path.join(directory, image_file)
-        contour_image, pixel_count = extract_blue_contour(image_path)
+        contour_image, pixel_count, _ = extract_blue_contour(image_path)
 
         print(f"Number of pixels inside the contour for {image_file}: {pixel_count}")
 
@@ -324,7 +324,7 @@ def process_images(directory):
 
 def process_image(image,image_path):
     # image_path = os.path(image)
-    contour_image, pixel_count = extract_blue_contour(image_path)
+    contour_image, pixel_count, _ = extract_blue_contour(image_path)
 
     cv2.destroyAllWindows()
 

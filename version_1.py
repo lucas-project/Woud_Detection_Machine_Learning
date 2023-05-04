@@ -47,7 +47,7 @@ for image_file in os.listdir(input_directory):
     if image_file.endswith('.jpg'):
         input_path = os.path.join(input_directory, image_file)
         output_path = os.path.join(output_directory, image_file)
-        contour_image, pixel_count = extract_blue_contour(input_path) 
+        contour_image, pixel_count, _ = extract_blue_contour(input_path) 
         cv2.imwrite(output_path, contour_image)
 
         # Display the output image
