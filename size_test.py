@@ -90,17 +90,11 @@ bottom_midpoint = (bottom_left + bottom_right) // 2
 right_midpoint = (top_right + bottom_right) // 2
 left_midpoint = (top_left + bottom_left) // 2
 
-#top_left_right_x, top_left_right_y = 
-#bottom_left_right_x, bottom_left_right_y = 
 top_midpoint_x, top_midpoint_y = (top_left + top_right) // 2
 bottom_midpoint_x, bottom_midpoint_y = (bottom_left + bottom_right) // 2
 left_midpoint_x, left_midpoint_y = (top_left + bottom_left) // 2
 right_midpoint_x, right_midpoint_y = (top_right + bottom_right) // 2
 
-#cv2.circle(image_fancy, tuple(top_midpoint), 5, (0, 0, 255), -1)
-#cv2.circle(image_fancy, tuple(bottom_midpoint), 5, (0, 0, 255), -1)
-#cv2.circle(image_fancy, tuple(left_midpoint), 5, (0, 0, 255), -1)
-#cv2.circle(image_fancy, tuple(right_midpoint), 5, (0, 0, 255), -1)
 cv2.circle(image_fancy, (top_midpoint_x, top_midpoint_y), 5, (0, 0, 255), -1)
 cv2.circle(image_fancy, (bottom_midpoint_x, bottom_midpoint_y), 5, (0, 0, 255), -1)
 cv2.circle(image_fancy, (left_midpoint_x, left_midpoint_y), 5, (0, 0, 255), -1)
@@ -130,14 +124,10 @@ cv2.putText(image_fancy, "{:.2f}mm".format(x_length_mm), (int(top_midpoint_x - 1
 cv2.putText(image_fancy, "{:.2f}mm".format(y_length_mm), (int(left_midpoint_x - 15), int(left_midpoint_y - 10)), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (255, 255, 255), 2)
 
 # Repeat the above for the coin. Might not be needed!
-#coin_radius_length_px = math.sqrt((coin_x - coin_x + radius_px)**2 + (coin_y - coin_y)**2)
-#coin_radius_length_mm = coin_radius_length_px / pixels_per_metric
 coin_radius_mm = radius_px / pixels_per_metric
 cv2.putText(image_fancy, "{:.2f}mm".format(coin_radius_mm), (int(coin_x + radius_px - 15), int(coin_y - 10)), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (255, 255, 255), 2)
 
 # Caclulate Wound area
-#area_mm = pixel_count * pixels_per_metric ** 2
-#area_mm = (pixel_count / pixels_per_metric) ** 2
 area_mm = area_px / pixels_per_metric ** 2
 
 # Draw area on the image
@@ -158,13 +148,6 @@ print(f'Wound Length X: {"{:.2f}px".format(x_length_px)}, {"{:.2f}mm".format(x_l
 print(f'Wound Length Y: {"{:.2f}px".format(y_length_px)}, {"{:.2f}mm".format(y_length_mm)}')
 print(f'Wound Area: {"{:.2f}px^2".format(area_px)}, {"{:.2f}mm^2".format(area_mm)}')
 
-##cv2.imshow('Original Image', image)
-##cv2.imshow('Contour', filled_contour)
-##cv2.imshow('Boxed Image', boxed_image)
-#filled_contour = cv2.merge((filled_contour,) * 3)
-#combined_image = cv2.hconcat([image, filled_contour, boxed_image])
-
-#cv2.imshow('Output', combined_image)
 cv2.imshow('Fancy Image', image_fancy)
 cv2.waitKey(0)
 cv2.destroyAllWindows()
@@ -191,9 +174,6 @@ threshold = 0.6
 binary_masks = (predicted_masks > threshold).astype(np.uint8) * 255
 
 for i, mask in enumerate(binary_masks):
-#for predicted_mask in predicted_masks:
-	#_, binary_mask = cv2.threshold(mask, threshold, 1, cv2.THRESH_BINARY)
-	#contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 	contours, _ = cv2.findContours(mask.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 	print(f'Contours: {len(contours)}')
 	image = cv2.imread(f'fake_evaluation/{i}.jpg') # Hack code. Fix this later
@@ -207,16 +187,6 @@ for i, mask in enumerate(binary_masks):
 		cv2.imshow('Boxed Image', image)
 		cv2.waitKey(0)
 		cv2.destroyAllWindows()
-
-	#rect = cv2.minAreaRect(contours[0])
-	
-	#box = cv2.boxPoints(rect)
-	#box = box.astype(int)
-	
-	#cv2.drawContours(image, [box], 0, (0, 255, 0), 2)
-	#cv2.imshow('Boxed Image', image)
-	#cv2.waitKey(0)
-	#cv2.destroyAllWindows()
 
 print('Done')
 print(f'Predicted Masks: {len(predicted_masks)}')

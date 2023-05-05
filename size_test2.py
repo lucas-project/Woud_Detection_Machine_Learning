@@ -7,7 +7,6 @@ from v1_coin import detect_coin
 from v1_measurement import calculate_pixels_per_millimeter_ratio, pixels_to_millimeters, millimeters_to_pixels, get_circle_area_px, get_circle_area_mm, get_contour_size_px, get_contour_area_px, get_contour_size_mm, get_contour_area_mm
 from v1_visualisation import visualise_circle_area_mm, visualise_circle_radius_mm, visualise_circle_diameter_mm, visualise_contour_area_mm, visualise_contour_size_mm
 
-#input_directory = 'contour/'
 image_path = 'contour/1.jpg'
 
 image = cv2.imread(image_path)
@@ -22,8 +21,6 @@ best_circle, _ = detect_coin(image)
 coin_position_x, coin_position_y, coin_radius_px = best_circle
 
 # Calculate the pixels-per-millimeter ratio
-# TODO: See circle_radius_px() function for notes
-#pixels_per_millimeter_ratio = circle_radius_px(image, coin_radius_mm)
 pixels_per_millimeter_ratio = calculate_pixels_per_millimeter_ratio(coin_radius_px, coin_radius_mm)
 
 coin_area_px = get_circle_area_px(coin_radius_px)
