@@ -13,7 +13,7 @@ image_path = 'contour/1.jpg'
 
 image = cv2.imread(image_path)
 
-line_contour, pixel_count, filled_contour = extract_blue_contour(image_path)
+_, _, _, filled_contour = extract_blue_contour(image_path)
 
 ## Need to pad the original image, as it's being done in extract_blue_contour() to generate the binary mmask, but the original is still too big!
 #target_size = 256
@@ -54,7 +54,7 @@ coin_radius_mm = 10.25
 #coin_radius_mm = 6.5 # FOR VALIDATION ONLY! This is the size of the coin on screen, if a ruler is held up to the screen.
 
 # Get the radius of the found coin in pixels
-best_circle, _ = detect_coin(image, min_radius=30, max_radius=100)
+best_circle, _ = detect_coin(image)
 coin_x, coin_y, radius_px = best_circle
 
 pixels_per_metric = radius_px / coin_radius_mm

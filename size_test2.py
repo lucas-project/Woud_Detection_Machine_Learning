@@ -18,7 +18,7 @@ image = cv2.imread(image_path)
 coin_radius_mm = 10.25
 
 # Get the radius of the found coin in pixels
-best_circle, _ = detect_coin(image, min_radius=30, max_radius=100)
+best_circle, _ = detect_coin(image)
 coin_position_x, coin_position_y, coin_radius_px = best_circle
 
 # Calculate the pixels-per-millimeter ratio
@@ -41,7 +41,7 @@ print(f'Coin Area Validated: {True if round(coin_area_mm, 2) == 330.06 else Fals
 
 ### WOUND MEASUREMENT ###
 
-line_contour, pixel_count, filled_contour = extract_blue_contour(image_path)
+_, _, _, filled_contour = extract_blue_contour(image_path)
 
 contours, _ = cv2.findContours(filled_contour, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 contour = max(contours, key=cv2.contourArea)

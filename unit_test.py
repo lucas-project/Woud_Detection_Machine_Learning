@@ -38,7 +38,7 @@ def init_values(coin_radius_mm):
 
 	image = cv2.imread(image_path)
 
-	best_circle, _ = detect_coin(image, min_radius=30, max_radius=100)
+	best_circle, _ = detect_coin(image)
 	coin_position_x, coin_position_y, coin_radius_px = best_circle
 	
 	pixels_per_millimeter_ratio = calculate_pixels_per_millimeter_ratio(coin_radius_px, coin_radius_mm)

@@ -2,8 +2,8 @@ import math
 import numpy as np
 import cv2
 import matplotlib.pyplot as plt
-
-from v1_border import process_image
+import os
+from v1_border import extract_blue_contour, process_image
 
 # Diaplay detection result
 def display_coin_detection(image, coin_detected, wound_area):
@@ -19,70 +19,141 @@ def display_coin_detection(image, coin_detected, wound_area):
     plt.imshow(image)
     plt.show()
 
-def calculate_actual_wound_area(ratio_coin, ratio_wound, coin_actual_area):
+def calculate_actual_wound_area(ratio_coin, coin_actual_area, wound_ratio):
     # ratio = circle_area / image_area
     # print(f"Ratio of circle area to image area: {ratio:.6f}")
     # print(f"Circle diameter: {diameter}")
     # coin_actual_size = 2  # Diameter of the 2-dollar coin in centimeters
-    wound_actual_size = coin_actual_area / ratio_coin * ratio_wound
+    wound_actual_size = coin_actual_area / ratio_coin * wound_ratio
     return wound_actual_size
 
 def calculate_ratio_wound_image(wound_pixel,image,image_path):
-    wound_pixel = process_image(image,image_path)
+    wound_pixel, wound_ratio = process_image(image,image_path)
     image_area = image.shape[0] * image.shape[1]
-    ratio_wound = wound_pixel / image_area
-    return ratio_wound
+    # ratio_wound = wound_pixel / image_area
+    return wound_ratio
 
 def calculate_actual_coin_area(diameter):
     coin_actual_area = math.pi * (diameter / 2) ** 2  # Area of a 2-dollar coin in millimeters squared
     return coin_actual_area
 
+# def get_average_color(image, x, y, radius, inside=True):
+#     mask = np.zeros(image.shape[:2], dtype=np.uint8)
+#     cv2.circle(mask, (x, y), radius, 255, -1 if inside else 1)
+#     mean_val = cv2.mean(image, mask=mask)
+#     return mean_val
+
+def get_average_color(image, x, y, radius, inside=True, thickness=20):
+    mask = np.zeros(image.shape[:2], dtype=np.uint8)
+    if inside:
+        cv2.circle(mask, (x, y), radius, 255, -1)
+    else:
+        cv2.circle(mask, (x, y), radius + thickness, 255, -1)
+        cv2.circle(mask, (x, y), radius, 0, -1)
+    mean_val = cv2.mean(image, mask=mask)
+    return mean_val
+
+def find_circles(image, param2_start, max_attempts):
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    blur = cv2.GaussianBlur(gray, (9, 9), 1.5)
+    canny = cv2.Canny(blur, 100, 255)
+
+    # cv2.imshow('gray', gray)
+    # cv2.imshow('blur', blur)
+    # cv2.imshow('canny', canny)
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
+    circles = None
+    attempt = 0
+
+    while circles is None and attempt < max_attempts:
+        circles = cv2.HoughCircles(canny, cv2.HOUGH_GRADIENT, 1, 20, param1=100, param2=param2_start - attempt * 2)
+        attempt += 1
+
+    return circles
+
+    
+
 # Function to detect the 2-dollar coin using the Hough Circle Transform
-def detect_coin(image, min_radius, max_radius):
+def detect_coin(image):
+    
     if image is None:
         print("Error loading the image.")
-        return None
+        return None, None
 
     # Convert image to 8-bit format
     image = np.uint8(image)
 
-    gray = cv2.cvtColor(image,cv2.COLOR_BGR2GRAY)
-    blur = cv2.GaussianBlur(gray, (7,7),1.2)
-    canny = cv2.Canny(blur, 50, 255)
+    # gray = cv2.cvtColor(image,cv2.COLOR_BGR2GRAY)
+    # blur = cv2.GaussianBlur(gray, (9,9),1.5)
+    # canny = cv2.Canny(blur, 100, 255)
     # gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     # circles = cv2.HoughCircles(gray, cv2.HOUGH_GRADIENT, 1, minDist=30, param1=50, param2=30, minRadius=min_radius, maxRadius=max_radius)
-    circles = cv2.HoughCircles(canny, cv2.HOUGH_GRADIENT, 1, 20, param1=50, param2=30, minRadius=0, maxRadius=0)
+    # circles = cv2.HoughCircles(canny, cv2.HOUGH_GRADIENT, 1, 20, param1=100, param2=40)
+    circles = find_circles(image,param2_start=40, max_attempts=10)
+
+    # cv2.imshow('gray', gray)
+    # cv2.imshow('blur', blur)
+    # cv2.imshow('canny', canny)
+    # cv2.imshow('circle', circles)
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
 
     # if circles is not None:
     #     circles = np.round(circles[0, :]).astype("int")
     #     return circles[0]  # Return the first detected circle
     # else:
     #     return None
+
     if circles is not None: 
         circles = np.uint16(np.around(circles))
         
         # Find the circle with the highest confidence (strongest edge)
         best_circle = None
         best_param2 = 0
+        best_difference = -1  # Initialize the best_difference variable
         
         for i in circles[0, :]:
             x, y, radius = i
-            circle_canny = canny[y - radius:y + radius, x - radius:x + radius]
+            # cv2.circle(image, (x, y), radius, (0, 255, 0), 2)
+            # cv2.circle(image, (x, y), 2, (0, 0, 255), 3)
+            # cv2.imshow('circles', image)
+            # cv2.waitKey(0)
+            # circle_canny = canny[y - radius:y + radius, x - radius:x + radius]
             
             # Calculate the confidence score for the circle based on edge intensity
-            confidence = np.sum(circle_canny) / (circle_canny.shape[0] * circle_canny.shape[1])
+            # confidence = np.sum(circle_canny) / (circle_canny.shape[0] * circle_canny.shape[1])
             
-            if confidence > best_param2:
+            # if confidence > best_param2:
+            #     best_circle = i
+            #     best_param2 = confidence
+
+            inner_average_color = get_average_color(image, x, y, radius, inside=True)
+            outer_average_color = get_average_color(image, x, y, radius, inside=False)
+
+            difference = sum(abs(inner_average_color[j] - outer_average_color[j]) for j in range(3))
+
+            if difference > best_difference:
                 best_circle = i
-                best_param2 = confidence
+                # cv2.circle(image, (x, y), radius, (0, 255, 0), 2)
+                # cv2.imshow('best circle now', image)
+                # cv2.waitKey(0)
+                print(f"difference now: {difference}")
+                best_difference = difference
+                print(f"best difference now: {best_difference}")
         
         # Draw the best circle
         if best_circle is not None:
+            x, y, radius = best_circle
             # #ratio of circle area to img area
             circle_area = math.pi * radius**2
             image_area = image.shape[0] * image.shape[1]
             ratio = circle_area / image_area
-            # print(f"Ratio of circle area to image area: {ratio:.6f}")
+            cv2.circle(image, (x, y), radius, (0, 255, 0), 2)
+            cv2.circle(image, (x, y), 2, (0, 0, 255), 3)
+            print(f"Ratio of circle area to image area: {ratio:.6f}")
+            # cv2.imshow('best circle', image)
+            # cv2.waitKey(0)
             return best_circle, ratio
             # x, y, radius = best_circle
             # diameter = 2 * radius
@@ -90,10 +161,12 @@ def detect_coin(image, min_radius, max_radius):
             # cv2.circle(image, (x, y), radius, (0, 255, 0), 2)
             # cv2.circle(image, (x, y), 2, (0, 0, 255), 3)
 
-        # # Size of the image
-        # height, width, channels = img.shape
-        # print(f"Image size: {width}x{height}")
+            # # Size of the image
+            # height, width, channels = img.shape
+            # print(f"Image size: {width}x{height}")
     
+    # Return None, None if no circles were found
+    return None, None
 
 # Function to calculate the wound area in pixels
 def calculate_wound_area(mask):
@@ -148,3 +221,63 @@ def estimate_actual_size(image, binary_mask, coin_detected):
     
     
     return rect
+
+def put_text_on_image(image, text, position, font_scale=1, font=cv2.FONT_HERSHEY_SIMPLEX, color=(0,0,0), thickness=2):
+    cv2.putText(image, text, position, font, font_scale, color, thickness)
+
+def main():
+    # input_directory = 'fake_evaluation'
+    input_directory = 'contour'
+
+    # Coin size
+    COIN_DIAMETER_MM = 28.0  # Diameter of a 2-dollar coin in millimeters
+
+    # Process images in the input directory
+    for image_file in os.listdir(input_directory):
+        if image_file.endswith('.jpg'):
+            input_path = os.path.join(input_directory, image_file)
+            # input_path = 'fake_evaluation/1.jpg'
+
+            # Read image
+            image_test = cv2.imread(input_path)
+
+            # Pixel count of the wound
+            # wound_pixel = process_image(image_test, input_path)
+
+            # Detect the 2-dollar coin
+            best_circle, ratio_coin = detect_coin(image_test)
+            print(best_circle)
+
+            # Get the actual pixel of wound area
+            coin_actual_area = calculate_actual_coin_area(COIN_DIAMETER_MM)
+            ratio_wound = extract_blue_contour(input_path)[2]
+
+            # if ratio_wound is None:
+            #     print("Error: ratio_wound is None")
+            #     continue
+
+            wound_area = calculate_actual_wound_area(ratio_coin, coin_actual_area, ratio_wound)
+            print(f"coin area is :{coin_actual_area}")
+            print(f"coin/image ratio is :{ratio_coin}")
+            print(f"wound/image ratio is :{ratio_wound}")
+            print(f"wound area is :{wound_area}")
+
+            # Display the coin detection result
+            # display_coin_detection(image_test, best_circle, None)
+            text = f"wound area size is :{wound_area} mm^2"
+            position = (50, 50)  # The position where the text will be placed (x, y)
+            put_text_on_image(image_test, text, position)
+            cv2.imshow("Image with wound size text", image_test)
+            cv2.waitKey(0)
+
+
+
+
+# def test_detect_coin(input_path):
+#     image = cv2.imread(input_path)
+#     detect_coin(image)
+
+# test_detect_coin('contour/6.jpg')
+
+if __name__ == "__main__":
+    main()
