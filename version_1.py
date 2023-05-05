@@ -52,7 +52,7 @@ for image_file in os.listdir(input_directory):
         cv2.imwrite(output_path, contour_image)
 
         # Display the output image
-        # cv2.imshow('Wound Image', wound_area)
+        cv2.imshow('Wound Image', wound_area)
         cv2.waitKey(0)
 
 cv2.destroyAllWindows()
@@ -183,10 +183,10 @@ for i, (image, predicted_mask) in enumerate(zip(evaluation_images, predicted_mas
     display_image = convert_image_for_display(image)
 
     # Detect the 2-dollar coin for each image
-    best_circle, ratio_coin = detect_coin(display_image)
+    # best_circle, ratio_coin = detect_coin(display_image)
 
     # Display the coin detection result
-    display_coin_detection(display_image, best_circle, wound_area=wound_area)
+    # display_coin_detection(display_image, best_circle, wound_area=wound_area)
 
 
 # Detect percentage of each colour
