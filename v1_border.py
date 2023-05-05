@@ -16,6 +16,8 @@ import concurrent.futures
 import joblib
 import json
 import shutil
+import albumentations as A
+from albumentations import Compose, ElasticTransform
 
 
 evaluation_path = 'fake_evaluation/'
@@ -134,6 +136,48 @@ def load_images_and_masks(images_json_path, masks_json_path, n_workers=4):
         masks_array[i, :height, :width] = mask
 
     return images_array, masks_array
+
+
+def augment_data(images, masks, batch_size, image_datagen, mask_datagen):
+    while True:
+        idx = np.random.permutation(images.shape[0])
+        images = images[idx]
+        masks = masks[idx]
+        
+        for i in range(0, len(images), batch_size):
+            batch_images = images[i:i+batch_size]
+            batch_masks = masks[i:i+batch_size]
+            
+            # Apply image_datagen and mask_datagen augmentations
+            batch_images = image_datagen.flow(batch_images, batch_size=batch_size, seed=42).next()
+            batch_masks = mask_datagen.flow(batch_masks, batch_size=batch_size, seed=42).next()
+            
+            aug_images = []
+            aug_masks = []
+            
+            for img, mask in zip(batch_images, batch_masks):
+                # Apply Albumentations library augmentations
+                augmented = Compose([
+                    ElasticTransform(alpha=1, sigma=50, alpha_affine=50, p=0.5),
+                    A.HorizontalFlip(p=0.5),
+                    A.VerticalFlip(p=0.5),
+                    A.RandomRotate90(p=0.5),
+                    A.RandomBrightnessContrast(p=0.5),
+                    A.ShiftScaleRotate(shift_limit=0.1, scale_limit=0.1, rotate_limit=20, p=0.5),
+                    A.RandomContrast(limit=0.2, p=0.5),
+                    A.RandomGamma(gamma_limit=(80, 120), p=0.5),
+                    # A.RandomCrop(height=128, width=128, p=0.5),
+                    A.GaussianBlur(blur_limit=3, p=0.5),
+                    A. GaussNoise(var_limit=(10, 50), p=0.5),
+                    A.OpticalDistortion(distort_limit=0.05, shift_limit=0.05, p=0.5)
+                ])(image=img, mask=mask)
+                
+                aug_images.append(augmented['image'])
+                aug_masks.append(augmented['mask'])
+                
+
+            yield np.array(aug_images), np.array(aug_masks)
+
 
 
 # Build the model (U-Net)
@@ -294,7 +338,7 @@ def extract_blue_contour(image_path):
     contour_image.fill(255)
     cv2.drawContours(contour_image, contours, -1, (0, 0, 0), 2)
 
-    # Create a binary mask where the contour region is white (255) and the rest of the image is black (0)
+    # Create a binary mask where the contour with wound region is white (255) and the rest of the image is black (0)
     filled_contour = np.zeros(image.shape[:2], dtype=np.uint8)
     cv2.drawContours(filled_contour, contours, -1, (255, 255, 255), thickness=cv2.FILLED)
 
@@ -313,7 +357,7 @@ def extract_blue_contour(image_path):
     pixel_ratio = pixel_count / total_pixels
 
 
-    return contour_image, pixel_count, pixel_ratio
+    return contour_image, pixel_count, pixel_ratio, filled_contour
 
 
 
@@ -333,8 +377,8 @@ def process_images(directory):
     # Process each image file
     for image_file in image_files:
         image_path = os.path.join(directory, image_file)
-        contour_image, pixel_count, pixel_ratio = extract_blue_contour(image_path)
-
+        pixel_count = extract_blue_contour(image_path)[1]
+        pixel_ratio = extract_blue_contour(image_path)[2]
         print(f"Number of pixels inside the contour for {image_file}: {pixel_count}\n")
         
         print(f"Ratio of pixels inside the contour for {image_file}: {pixel_ratio}")
@@ -351,11 +395,11 @@ def process_images(directory):
 
 def process_image(image,image_path):
     # image_path = os.path(image)
-    contour_image, pixel_count, pixel_ratio = extract_blue_contour(image_path)
+    pixel_ratio = extract_blue_contour(image_path)[2]
 
     cv2.destroyAllWindows()
 
-    return pixel_count, pixel_ratio
+    return pixel_ratio
 
 
 def split_json_objects(input_file, output_folder):

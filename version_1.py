@@ -10,7 +10,7 @@ from tensorflow.keras.callbacks import EarlyStopping
 import re
 import matplotlib.pyplot as plt
 from skimage import measure
-from v1_border import build_unet, display_json_masks, extract_wound_area, load_images_and_masks, extract_blue_contour, process_image, process_images, split_json_objects
+from v1_border import build_unet, display_json_masks, extract_wound_area, load_images_and_masks, extract_blue_contour, process_image, process_images, split_json_objects, augment_data
 from v1_coin import display_coin_detection, detect_coin, calculate_actual_coin_area, calculate_ratio_wound_image, calculate_actual_wound_area
 from v1_colour import calculate_color_percentage, quantize_image, extract_color_information
 from v1_evaluation import load_evaluation_images
@@ -40,7 +40,7 @@ COIN_DIAMETER_MM = 28.0  # Diameter of a 2-dollar coin in millimeters
 if not os.path.exists(output_directory):
     os.makedirs(output_directory)
 
-#pixel coount of the wound
+# pixel coount of the wound
 pixel_counts, pixel_ratios = process_images(input_directory)
 print(pixel_counts)
 
@@ -48,11 +48,11 @@ for image_file in os.listdir(input_directory):
     if image_file.endswith('.jpg'):
         input_path = os.path.join(input_directory, image_file)
         output_path = os.path.join(output_directory, image_file)
-        contour_image, pixel_count, pixel_ratio = extract_blue_contour(input_path) 
+        contour_image, pixel_count, pixel_ratio, filled_contour = extract_blue_contour(input_path) 
         cv2.imwrite(output_path, contour_image)
 
         # Display the output image
-        # cv2.imshow('Contour Image', contour_image)
+        # cv2.imshow('Wound Image', filled_contour)
         cv2.waitKey(0)
 
 cv2.destroyAllWindows()
@@ -61,7 +61,7 @@ cv2.destroyAllWindows()
 image_test = cv2.imread('contour/1.jpg')
 image_path = 'contour/1.jpg'
 #pixel coount of the wound
-wound_pixel, wound_ratio = process_image(image_test,image_path)
+wound_ratio = process_image(image_test,image_path)
 # print(wound_pixel)
 
 # Detect the 2-dollar coin
@@ -124,14 +124,23 @@ else:
     optimizer = Adam(learning_rate = 0.0005)
     model.compile(optimizer=optimizer, loss=BinaryCrossentropy(), metrics=[dice_coefficient])
 
+
     # Train the model
     batch_size = 8  
 
-    train_generator = zip(image_datagen.flow(X_train, batch_size=batch_size, seed=42),
-                          mask_datagen.flow(y_train, batch_size=batch_size, seed=42))
+    
 
-    val_generator = zip(image_datagen.flow(X_val, batch_size=batch_size, seed=42),
-                        mask_datagen.flow(y_val, batch_size=batch_size, seed=42))
+    train_generator = augment_data(X_train, y_train, batch_size, image_datagen, mask_datagen)
+    val_generator = augment_data(X_val, y_val, batch_size, image_datagen, mask_datagen)
+
+
+# train_generator = zip(image_datagen.flow(X_train, batch_size=batch_size, seed=42),
+#                       mask_datagen.flow(y_train, batch_size=batch_size, seed=42))
+
+# val_generator = zip(image_datagen.flow(X_val, batch_size=batch_size, seed=42),
+#                     mask_datagen.flow(y_val, batch_size=batch_size, seed=42))
+
+
 
     early_stopping = EarlyStopping(monitor='val_loss', patience=5, verbose=1, restore_best_weights=True)
 
@@ -149,6 +158,7 @@ if load_old_model.lower() == 'n':
     plt.legend()
     plt.title('Training and Validation Loss')
     plt.show()
+
 
 
 additional_input = True  
