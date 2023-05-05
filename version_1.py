@@ -215,6 +215,56 @@ if load_old_model.lower() == 'n':
     model.save(f'models/wound_segmentation_model_{timestamp}.h5')
 
 
+# Fine tune option
+fine_tune_model = input("Press 'y' to fine-tune the model, or 'n' for no: ")
+
+if fine_tune_model.lower() == 'y':
+    # Make some layers trainable, for example, the last 5 layers
+    for layer in model.layers[-5:]:
+        layer.trainable = True
+
+    new_images_json_path = 'new_dataset/images_json/'
+    new_masks_json_path = 'new_dataset/masks_json/'
+
+    # Compile the model with a potentially different learning rate
+    optimizer = Adam(learning_rate=0.0001)
+    model.compile(optimizer=optimizer, loss=BinaryCrossentropy(), metrics=[dice_coefficient])
+
+    # Load the new dataset images and masks
+    X_new, y_new = load_images_and_masks(new_images_json_path, new_masks_json_path)
+
+    X_train_new, X_val_new, y_train_new, y_val_new = train_test_split(X_new, y_new, test_size=0.2, random_state=42)
+
+    image_datagen_new = ImageDataGenerator(**data_gen_args)
+    mask_datagen_new = ImageDataGenerator(**data_gen_args)
+
+    image_datagen_new.fit(X_train_new, augment=True, seed=42)
+    mask_datagen_new.fit(y_train_new, augment=True, seed=42)
+
+    train_generator_new = zip(image_datagen_new.flow(X_train_new, batch_size=batch_size, seed=42),
+                              mask_datagen_new.flow(y_train_new, batch_size=batch_size, seed=42))
+
+    val_generator_new = zip(image_datagen_new.flow(X_val_new, batch_size=batch_size, seed=42),
+                            mask_datagen_new.flow(y_val_new, batch_size=batch_size, seed=42))
+
+    history = model.fit(train_generator_new, steps_per_epoch=len(X_train_new) // batch_size, validation_data=val_generator_new,
+              validation_steps=len(X_val_new) // batch_size, epochs=5)
+
+    plt.plot(history.history['loss'], label='Training Loss')
+    plt.plot(history.history['val_loss'], label='Validation Loss')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.legend()
+    plt.title('Training and Validation Loss')
+    plt.show()
+
+    # Save the fine-tuned model
+    timestamp = int(time.time())
+    model.save(f'models/model_finetuned_{timestamp}.h5')
+
+
+
+
 
 
 
