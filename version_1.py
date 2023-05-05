@@ -48,11 +48,11 @@ for image_file in os.listdir(input_directory):
     if image_file.endswith('.jpg'):
         input_path = os.path.join(input_directory, image_file)
         output_path = os.path.join(output_directory, image_file)
-        contour_image, pixel_count, pixel_ratio, filled_contour = extract_blue_contour(input_path) 
+        contour_image, pixel_count, pixel_ratio, wound_area = extract_blue_contour(input_path) 
         cv2.imwrite(output_path, contour_image)
 
         # Display the output image
-        # cv2.imshow('Wound Image', filled_contour)
+        # cv2.imshow('Wound Image', wound_area)
         cv2.waitKey(0)
 
 cv2.destroyAllWindows()

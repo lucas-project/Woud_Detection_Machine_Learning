@@ -339,11 +339,11 @@ def extract_blue_contour(image_path):
     cv2.drawContours(contour_image, contours, -1, (0, 0, 0), 2)
 
     # Create a binary mask where the contour with wound region is white (255) and the rest of the image is black (0)
-    filled_contour = np.zeros(image.shape[:2], dtype=np.uint8)
-    cv2.drawContours(filled_contour, contours, -1, (255, 255, 255), thickness=cv2.FILLED)
+    wound_area = np.zeros(image.shape[:2], dtype=np.uint8)
+    cv2.drawContours(wound_area, contours, -1, (255, 255, 255), thickness=cv2.FILLED)
 
     # Count the pixels inside the filled contour
-    pixel_count = np.count_nonzero(filled_contour)
+    pixel_count = np.count_nonzero(wound_area)
 
     # Get the ratio of the resized image to origical image
     resize_ratio = 256 / long_side 
@@ -357,7 +357,7 @@ def extract_blue_contour(image_path):
     pixel_ratio = pixel_count / total_pixels
 
 
-    return contour_image, pixel_count, pixel_ratio, filled_contour
+    return contour_image, pixel_count, pixel_ratio, wound_area
 
 
 
