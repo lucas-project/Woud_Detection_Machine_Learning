@@ -27,8 +27,8 @@ input_directory = 'contour/'
 output_directory = 'contour_processed/' 
 input_file = 'splited_json/1.json'
 output_folder = 'splited_json/'
-model_path = 'models/wound_segmentation_model_1683183688.h5'
-
+model_path = 'models/model_finetuned_1683628583_5_0.0002.h5'
+batch_size = 8  
 # This function only used when need to split .json file from labelbox to small .json file,  
 # file name needed to changed each time to generate correct file name.
 
@@ -52,7 +52,7 @@ for image_file in os.listdir(input_directory):
         cv2.imwrite(output_path, contour_image)
 
         # Display the output image
-        cv2.imshow('Wound Image', wound_area)
+        # cv2.imshow('Wound Image', wound_area)
         cv2.waitKey(0)
 
 cv2.destroyAllWindows()
@@ -126,7 +126,7 @@ else:
 
 
     # Train the model
-    batch_size = 8  
+
 
     
 
@@ -223,11 +223,11 @@ if fine_tune_model.lower() == 'y':
     for layer in model.layers[-5:]:
         layer.trainable = True
 
-    new_images_json_path = 'new_dataset/images_json/'
-    new_masks_json_path = 'new_dataset/masks_json/'
+    new_images_json_path = 'fine_tune_1/'
+    new_masks_json_path = 'fine_tune_1_masks/'
 
     # Compile the model with a potentially different learning rate
-    optimizer = Adam(learning_rate=0.0001)
+    optimizer = Adam(learning_rate=0.0002)
     model.compile(optimizer=optimizer, loss=BinaryCrossentropy(), metrics=[dice_coefficient])
 
     # Load the new dataset images and masks
@@ -256,6 +256,7 @@ if fine_tune_model.lower() == 'y':
     plt.ylabel('Loss')
     plt.legend()
     plt.title('Training and Validation Loss')
+
     plt.show()
 
     # Save the fine-tuned model
