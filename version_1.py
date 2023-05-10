@@ -10,10 +10,10 @@ from tensorflow.keras.callbacks import EarlyStopping
 import re
 import matplotlib.pyplot as plt
 from skimage import measure
-from v1_border import build_unet, display_json_masks, extract_wound_area, load_images_and_masks, extract_blue_contour, process_image, process_images, split_json_objects, augment_data
+from v1_border import build_unet, display_json_masks, extract_wound_area, load_images_and_masks, extract_blue_contour, process_image, process_images, split_json_objects, augment_data, resize_to_original, remove_padding
 from v1_coin import display_coin_detection, detect_coin, calculate_actual_coin_area, calculate_ratio_wound_image, calculate_actual_wound_area
 from v1_colour import calculate_color_percentage, quantize_image, extract_color_information
-from v1_evaluation import load_evaluation_images
+from v1_evaluation import load_evaluation_images, load_fake_evaluation_images
 import time
 from keras.models import load_model
 
@@ -162,7 +162,7 @@ if load_old_model.lower() == 'n':
 
 
 additional_input = True  
-evaluation_images = load_evaluation_images(evaluation_path, additional_input)
+evaluation_images, original_dimensions, original_images = load_fake_evaluation_images(evaluation_path, additional_input)
 
 # Predict and display results
 predicted_masks = model.predict(evaluation_images)
@@ -209,6 +209,39 @@ for i in range(len(evaluation_images)):
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
+
+resized_binary_masks = []
+for i, (binary_mask, original_dim) in enumerate(zip(binary_masks, original_dimensions)):
+    original_height, original_width = original_dim
+    remove_padding_mask = remove_padding(binary_mask, original_width, original_height)
+    resized_mask = resize_to_original(remove_padding_mask, original_width, original_height)
+    resized_binary_masks.append(resized_mask)
+    display_image = convert_image_for_display(original_images[i])
+    cv2.imshow(f'Original Image {i}', display_image)
+    cv2.imshow(f'Resized Binary Mask {i}', resized_mask)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+
+
+for i, binary_mask_array in enumerate(resized_binary_masks):
+    mask_pixels = np.sum(binary_mask_array == 255)  # Count the number of mask pixels (value 255)
+    total_pixels = binary_mask_array.size  # Calculate the total number of pixels in the binary mask
+    mask_pixel_ratio = mask_pixels / total_pixels  # Calculate the mask pixel ratio
+
+    print(f"Mask pixel ratio for image {i}: {mask_pixel_ratio:.4f}")
+    print(f"Mask pixel for image {i}: {mask_pixels:.4f}")
+
+
+# resized_binary_masks_pixels = []
+# for resized_mask in resized_binary_masks:
+#     binary_mask_pixels = np.where(resized_mask > 0)  # Get the indices where the binary mask is non-zero
+#     mask_pixels = []
+#     for row, col in zip(binary_mask_pixels[0], binary_mask_pixels[1]):
+#         pixel_value = resized_mask[row, col]
+#         mask_pixels.append((row, col, pixel_value))
+#     resized_binary_masks_pixels.append(mask_pixels)
+# print (resized_binary_masks_pixels)
+
 # Save the model
 if load_old_model.lower() == 'n':
     timestamp = int(time.time())
@@ -227,7 +260,7 @@ if fine_tune_model.lower() == 'y':
     new_masks_json_path = 'fine_tune_1_masks/'
 
     # Compile the model with a potentially different learning rate
-    optimizer = Adam(learning_rate=0.0002)
+    optimizer = Adam(learning_rate=0.0003)
     model.compile(optimizer=optimizer, loss=BinaryCrossentropy(), metrics=[dice_coefficient])
 
     # Load the new dataset images and masks
