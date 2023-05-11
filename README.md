@@ -29,3 +29,5 @@ python version_1.py
 'fake_evaluation' folder: fake evaluation images
 
 'wound_segmentation_model.h5': the model file
+
+pip install opencv-contrib-python

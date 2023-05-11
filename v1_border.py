@@ -12,6 +12,15 @@ from tensorflow.keras.layers import BatchNormalization
 import re
 import matplotlib.pyplot as plt
 from skimage import measure
+import concurrent.futures
+import joblib
+import json
+import shutil
+import albumentations as A
+from albumentations import Compose, ElasticTransform
+
+
+evaluation_path = 'fake_evaluation/'
 
 # Resize while keeping original ratio (Avoid coin shape change)
 def resize_with_aspect_ratio(image, target_size):
@@ -44,96 +53,163 @@ def pad_image(image, target_size):
     else:
         raise ValueError("The input image must have 2 or 3 dimensions.")
     
-# Load and preprocess the data
-def load_images_and_masks(images_json_path, images_png_path, masks_json_path, masks_png_path):
+# Remove padding to output mask to store original image size mask
+def remove_padding(image, original_width, original_height):
+    height, width = image.shape[:2]
+
+    if original_height > original_width:
+        resize_ratio = height / original_height 
+        resize_width = int(resize_ratio * original_width)
+        left_pad = (width - resize_width) // 2
+        right_pad = width - resize_width - left_pad
+        top_pad =0
+        bottom_pad = 0
+    else:
+        resize_ratio = width / original_width 
+        resize_height = int(resize_ratio * original_height)
+        top_pad = (height - resize_height) // 2
+        bottom_pad = height - resize_height - top_pad
+        left_pad = 0
+        right_pad = 0
+
+    if image.ndim == 3:
+        return image[top_pad:height - bottom_pad, left_pad:width - right_pad, :]
+    elif image.ndim == 2:
+        return image[top_pad:height - bottom_pad, left_pad:width - right_pad]
+    else:
+        raise ValueError("The input image must have 2 or 3 dimensions.")
+
+
+def resize_to_original(image, original_width, original_height):
+    return cv2.resize(image, (original_width, original_height))
+
+
+
+cache_folder = "cache"
+    
+def load_images_and_masks_worker(file, images_json_path, masks_json_path, target_size):
+    cache_file = os.path.join(cache_folder, f"{file[:-5]}.joblib")
+    
+    if os.path.exists(cache_file):
+        img, mask = joblib.load(cache_file)
+    else:
+        img, mask = load_image_and_mask(file, images_json_path, masks_json_path)
+        if img is not None and mask is not None:
+            img, mask = resize_and_pad_image_and_mask(img, mask, target_size)
+            joblib.dump((img, mask), cache_file)
+    
+    return img, mask, file
+
+    
+def load_image_and_mask(file, images_json_path, masks_json_path):
+    with open(os.path.join(masks_json_path, file[:-5] + '.json')) as f:
+        mask_json = json.load(f)
+
+    if 'Label' in mask_json:
+        image = cv2.imread(os.path.join(images_json_path, file[:-5] + '.jpg'), cv2.IMREAD_COLOR)
+        if image is None:
+            print(f"Unable to read image file {file}. Skipping...")
+            return None, None
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+        polygon = mask_json['Label']['objects'][0]['instanceURI']
+        response = requests.get(polygon)
+        mask = np.array(Image.open(BytesIO(response.content)).convert('L'))
+
+        return image, mask
+    return None, None
+
+def resize_and_pad_image_and_mask(image, mask, target_size):
+    image = resize_with_aspect_ratio(image, target_size)
+    image = pad_image(image, target_size)
+
+    mean_pixel_value = np.mean(image, axis=-1, keepdims=True)
+    image = np.concatenate([image, mean_pixel_value], axis=-1)
+
+    mask = resize_with_aspect_ratio(mask, target_size)
+    mask = pad_image(mask, target_size)
+    mask = np.expand_dims(mask, axis=-1)
+    mask = mask / 255.0
+
+    return image, mask
+
+def load_images_and_masks(images_json_path, masks_json_path, n_workers=4):
     images = []
     masks = []
 
-    # Load images with JSON masks
     json_files = os.listdir(masks_json_path)
-    
-    # Sort JSON files numerically
     json_files = sorted(json_files, key=lambda x: int(re.search(r'\d+', x).group()))
 
-    for file in json_files:
-        # Load corresponding JSON mask
-        with open(os.path.join(masks_json_path, file[:-5] + '.json')) as f:
-            mask_json = json.load(f)
+    target_size = 256
 
-        if 'Label' in mask_json:
-            # Load image
-            target_size = 256
+    if not os.path.exists(cache_folder):
+        os.makedirs(cache_folder)
 
-            image = cv2.imread(os.path.join(images_json_path, file[:-5] + '.jpg'), cv2.IMREAD_COLOR)
-            if image is None:
-                print(f"Unable to read image file {file}. Skipping...")
-                continue
-            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-            image = resize_with_aspect_ratio(image, target_size)
-            image = pad_image(image, target_size)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=n_workers) as executor:
+        futures = [executor.submit(load_images_and_masks_worker, file, images_json_path, masks_json_path, target_size) for file in json_files]
 
-            # Add additional channel
-            mean_pixel_value = np.mean(image, axis=-1, keepdims=True)
-            image = np.concatenate([image, mean_pixel_value], axis=-1)
-            
-            images.append(image)
+        for future in concurrent.futures.as_completed(futures):
+            img, mask, file = future.result()
+            if img is not None and mask is not None:
+                images.append(img)
+                masks.append(mask)
+                # print(f"Loaded image {file[:-5]}.jpg with mask {file[:-5]}.json")
 
-            polygon = mask_json['Label']['objects'][0]['instanceURI']
-            response = requests.get(polygon)
-            mask = np.array(Image.open(BytesIO(response.content)).convert('L'))
-            mask = resize_with_aspect_ratio(mask, target_size)
-            mask = pad_image(mask, target_size)
-            mask = np.expand_dims(mask, axis=-1)  # Convert to (256, 256, 1) shape
-            mask = mask / 255.0  # Scale mask values between 0 and 1
-            masks.append(mask)
-            print(f"Loaded JSON mask for file {file}")
 
-    # Load images with PNG masks
-    png_files = os.listdir(images_png_path)
-
-    # Sort PNG files numerically
-    png_files = sorted(png_files, key=lambda x: int(re.search(r'\d+', x).group()))
-
-    for file in png_files:
-        # Load PNG mask
-        mask = cv2.imread(os.path.join(masks_png_path, file[:-4] + '.png'), cv2.IMREAD_GRAYSCALE)
-
-        image = cv2.imread(os.path.join(images_png_path, file), cv2.IMREAD_COLOR)
-        if image is None:
-            print(f"Unable to read image file {file}. Skipping...")
-            continue
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        image = resize_with_aspect_ratio(image, target_size)
-
-        # Add additional channel
-        mean_pixel_value = np.mean(image, axis=-1, keepdims=True)
-        image = np.concatenate([image, mean_pixel_value], axis=-1)
-        image = pad_image(image, target_size)
-
-        mask = resize_with_aspect_ratio(mask, target_size)
-        mask = pad_image(mask, target_size)
-        mask = np.expand_dims(mask, axis=-1)  # Convert to (256, 256, 1) shape
-        mask = mask / 255.0  # Scale mask values between 0 and 1
-
-        images.append(image)
-        masks.append(mask)
-        print(f"Loaded PNG mask for file {file}")
-
-        # height of the images and masks
     max_width = max([img.shape[1] for img in images])
     max_height = max([img.shape[0] for img in images])
 
-    # Create empty NumPy arrays with a consistent shape
     images_array = np.zeros((len(images), max_height, max_width, 4), dtype=np.float32)
     masks_array = np.zeros((len(masks), max_height, max_width, 1), dtype=np.float32)
 
-    # Fill the empty NumPy arrays with the resized images and masks
     for i, (image, mask) in enumerate(zip(images, masks)):
         height, width = image.shape[:2]
         images_array[i, :height, :width] = image
         masks_array[i, :height, :width] = mask
 
     return images_array, masks_array
+
+
+def augment_data(images, masks, batch_size, image_datagen, mask_datagen):
+    while True:
+        idx = np.random.permutation(images.shape[0])
+        images = images[idx]
+        masks = masks[idx]
+        
+        for i in range(0, len(images), batch_size):
+            batch_images = images[i:i+batch_size]
+            batch_masks = masks[i:i+batch_size]
+            
+            # Apply image_datagen and mask_datagen augmentations
+            batch_images = image_datagen.flow(batch_images, batch_size=batch_size, seed=42).next()
+            batch_masks = mask_datagen.flow(batch_masks, batch_size=batch_size, seed=42).next()
+            
+            aug_images = []
+            aug_masks = []
+            
+            for img, mask in zip(batch_images, batch_masks):
+                # Apply Albumentations library augmentations
+                augmented = Compose([
+                    ElasticTransform(alpha=1, sigma=50, alpha_affine=50, p=0.5),
+                    A.HorizontalFlip(p=0.5),
+                    A.VerticalFlip(p=0.5),
+                    A.RandomRotate90(p=0.5),
+                    A.RandomBrightnessContrast(p=0.5),
+                    A.ShiftScaleRotate(shift_limit=0.1, scale_limit=0.1, rotate_limit=20, p=0.5),
+                    # A.RandomContrast(limit=0.2, p=0.5),
+                    A.RandomGamma(gamma_limit=(80, 120), p=0.5),
+                    # A.RandomCrop(height=128, width=128, p=0.5),
+                    A.GaussianBlur(blur_limit=3, p=0.5),
+                    A. GaussNoise(var_limit=(10, 50), p=0.5),
+                    A.OpticalDistortion(distort_limit=0.05, shift_limit=0.05, p=0.5)
+                ])(image=img, mask=mask)
+                
+                aug_images.append(augmented['image'])
+                aug_masks.append(augmented['mask'])
+                
+
+            yield np.array(aug_images), np.array(aug_masks)
+
 
 
 # Build the model (U-Net)
@@ -260,6 +336,17 @@ def extract_blue_contour(image_path):
     image = cv2.imread(image_path)
     if image is None:
         raise ValueError(f"Unable to read image file {image_path}. Check file path/integrity")
+    
+    # Get the dimensions of the original image
+    original_height, original_width = image.shape[:2]
+
+    # Determine whether the original image's height or width is bigger
+    if original_height > original_width:
+        long_side = original_height
+        short_side = original_width
+    else:
+        long_side = original_width
+        short_side = original_height
 
     # Resize the image while maintaining its aspect ratio
     target_size = 256
@@ -283,14 +370,26 @@ def extract_blue_contour(image_path):
     contour_image.fill(255)
     cv2.drawContours(contour_image, contours, -1, (0, 0, 0), 2)
 
-    # Create a binary mask where the contour region is white (255) and the rest of the image is black (0)
-    filled_contour = np.zeros(image.shape[:2], dtype=np.uint8)
-    cv2.drawContours(filled_contour, contours, -1, (255, 255, 255), thickness=cv2.FILLED)
+    # Create a binary mask where the contour with wound region is white (255) and the rest of the image is black (0)
+    wound_area = np.zeros(image.shape[:2], dtype=np.uint8)
+    cv2.drawContours(wound_area, contours, -1, (255, 255, 255), thickness=cv2.FILLED)
 
     # Count the pixels inside the filled contour
-    pixel_count = np.count_nonzero(filled_contour)
+    pixel_count = np.count_nonzero(wound_area)
 
-    return contour_image, pixel_count
+    # Get the ratio of the resized image to origical image
+    resize_ratio = 256 / long_side 
+    resize_short_size = resize_ratio * short_side
+
+
+    # Calculate the total number of pixels in the resized image
+    total_pixels = 256 * resize_short_size
+
+    # Calculate the ratio of pixels inside the filled contour to the total pixels in the resized image
+    pixel_ratio = pixel_count / total_pixels
+
+
+    return contour_image, pixel_count, pixel_ratio, wound_area
 
 
 
@@ -305,19 +404,50 @@ def process_images(directory):
     image_files = sorted(image_files, key=lambda x: int(re.search(r'\d+', x).group()))
 
     pixel_counts = {}
+    pixel_ratios = {}
 
     # Process each image file
     for image_file in image_files:
         image_path = os.path.join(directory, image_file)
-        contour_image, pixel_count = extract_blue_contour(image_path)
-
-        print(f"Number of pixels inside the contour for {image_file}: {pixel_count}")
+        pixel_count = extract_blue_contour(image_path)[1]
+        pixel_ratio = extract_blue_contour(image_path)[2]
+        print(f"Number of pixels inside the contour for {image_file}: {pixel_count}\n")
+        
+        print(f"Ratio of pixels inside the contour for {image_file}: {pixel_ratio}")
 
         # cv2.imshow(f"Contour Image for {image_file}", contour_image)
         cv2.waitKey(0)
 
         pixel_counts[image_file] = pixel_count
+        pixel_ratios[image_file] = pixel_ratio
 
     cv2.destroyAllWindows()
 
-    return pixel_counts
+    return pixel_counts, pixel_ratios
+
+def process_image(image,image_path):
+    # image_path = os.path(image)
+    pixel_ratio = extract_blue_contour(image_path)[2]
+
+    cv2.destroyAllWindows()
+
+    return pixel_ratio
+
+
+def split_json_objects(input_file, output_folder):
+    with open(input_file, 'r') as infile:
+        data = json.load(infile)
+
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
+
+    file_number = 371
+
+    for obj in data:
+        output_file = os.path.join(output_folder, f"{file_number}.json")
+        with open(output_file, 'w') as outfile:
+            json.dump(obj, outfile)
+        file_number += 1
+
+
+
