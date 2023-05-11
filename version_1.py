@@ -33,7 +33,8 @@ evaluation_path = 'fake_evaluation/'
 #input_file = 'splited_json/1.json'
 #output_folder = 'splited_json/'
 model_path = 'models/model_finetuned_1683628583_5_0.0002.h5'
-batch_size = 8
+
+batch_size = 7
 
 # This function only used when need to split .json file from labelbox to small .json file,  
 # file name needed to changed each time to generate correct file name.
@@ -59,7 +60,7 @@ batch_size = 8
 #        cv2.imwrite(output_path, contour_image)
 #
 #        # Display the output image
-#        cv2.imshow(f'Wound Image for {image_file}', wound_area)
+#        #cv2.imshow(f'Wound Image for {image_file}', wound_area)
 #        cv2.waitKey(0)
 
 #cv2.destroyAllWindows()
@@ -199,7 +200,10 @@ cv2.destroyAllWindows()
 X, y = load_images_and_masks(images_json_path, masks_json_path)
 
 # Display the JSON format masking images
-# display_json_masks(images_json_path, masks_json_path, y)
+# TODO: This function fails for me (Drew) due to some kind of authentication error.
+# I cannot find any documentation in the project about this, nor was any communicated to me
+# so I am commenting it out for now. I will try to remember to ask about it next time we meet.
+#display_json_masks(images_json_path, masks_json_path, y)
 
 # Train-validation split
 X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
