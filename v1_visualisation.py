@@ -20,11 +20,12 @@ def drawText(image, text, position_x, position_y):
 
 ### VISUALISATION FUNCTIONS ###
 
+# Visualise a OpenCV circle showing its area in millimetres
 def visualise_circle_area_mm(image, circle, area_mm):
 	position_x, position_y, radius_px = circle
 	
-	# Create a blank image
-	overlay_image = np.zeros_like(image)
+	# Create a copy of the image
+	overlay_image = image.copy()
 	
 	# Draw a cirle on the overlay image
 	cv2.circle(overlay_image, (position_x, position_y), radius_px, (255, 0, 0), -1)
@@ -41,6 +42,7 @@ def visualise_circle_area_mm(image, circle, area_mm):
 	
 	return image
 
+# Visualise a OpenCV circle showing its radius in millimetres
 def visualise_circle_radius_mm(image, circle, radius_mm):
 	position_x, position_y, radius_px = circle
 	
@@ -61,6 +63,7 @@ def visualise_circle_radius_mm(image, circle, radius_mm):
 	
 	return image
 
+# Visualise a OpenCV circle showing its diameter in millimetres
 def visualise_circle_diameter_mm(image, circle, diameter_mm):
 	position_x, position_y, radius_px = circle
 	
@@ -79,9 +82,10 @@ def visualise_circle_diameter_mm(image, circle, diameter_mm):
 	
 	return image
 
+# Visualise an OpenCV contour showing its area in millimetres
 def visualise_contour_area_mm(image, contour, area_mm):
-	# Create a blank image
-	overlay_image = np.zeros_like(image)
+	# Create a copy of the image
+	overlay_image = image.copy()
 	
 	# Draw the contour on the overlay image
 	cv2.drawContours(overlay_image, [contour], -1, (255, 0, 0), -1)
@@ -103,6 +107,7 @@ def visualise_contour_area_mm(image, contour, area_mm):
 	
 	return image
 
+# Visualise an OpenCV contour showing width and height in millimetres
 def visualise_contour_size_mm(image, contour, size_x_mm, size_y_mm):
 	# Calculate a rect around the contour.
 	rect = cv2.minAreaRect(contour)

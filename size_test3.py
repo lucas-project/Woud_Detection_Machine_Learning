@@ -58,9 +58,36 @@ print(f'Wound Area: {"{:.2f}px^2".format(wound_area_px)}, {"{:.2f}mm^2".format(w
 
 ### VISUALISATIONS ###
 
+# For this version of size_test, I want to test the visualisations on the scaled down image passed in to get_blue_contour
+# This image scale is also what is used for training the model, so this could be a valuable approach
+# However, because the rescaling is done INSIDE get_blue_contour for some reason, we need to repeat it here
+
+## Repeat the scaling techinque applied to the image
+
+# Get the dimensions of the original image
+original_height, original_width = image.shape[:2]
+
+# Determine whether the original image's height or width is bigger
+if original_height > original_width:
+	long_side = original_height
+	short_side = original_width
+else:
+	long_side = original_width
+	short_side = original_height
+
+# Resize the image while maintaining its aspect ratio
+target_size = 256
+image = resize_with_aspect_ratio(image, target_size)
+image = pad_image(image, target_size)
+
+## End scaling repeat
+
 # Coin Visualisations
 
 image_circle_area = image.copy()
+cv2.imshow('Wound Area', image_circle_area)
+cv2.waitKey(0)
+cv2.destroyAllWindows()
 image_circle_area = visualise_circle_area_mm(image_circle_area, best_circle, coin_area_mm)
 
 image_circle_radius = image.copy()
@@ -81,72 +108,18 @@ cv2.imshow('Coin Diameter', image_circle_diameter)
 cv2.waitKey(0)
 cv2.destroyAllWindows()
 
-# Wound Visualisations
-
-### REVERSING SCALING AND PADDING OF EXTRACT_BLUE_CONTOUR ###
-
-# Before the wound contour can be visualised, it must first be scaled back up to original size
-
-# Cropping the padded image
-
-# Make a copy of the wound contour to be cropped
-#cropped_contour = contour.copy()
-cropped_mask = filled_contour.copy() # TODO: If this works, it should be renamed as cropped_mask
-
-# Make a copy of the original image, and then scale it down (without padding it) to determine
-# how much padding was added to the image passed in to extract_blue_contour()
-dummy_image = image.copy()
-
-# Scale the image down to the same target size used in extract_blue_contour()
-target_size = 256 # Copied from extract_blue_contour
-dummy_image = resize_with_aspect_ratio(dummy_image, target_size)
-
-dummy_width, dummy_height = dummy_image.shape[:2]
-
-# Compare the sizes of this new image with the size of the contour image to determine where
-# any padding was added to the contour image by seeing which sides are smaller than target_size
-
-if dummy_width < target_size:
-	# Padding was added to the X axis of the original image
-	
-	padding_amount_x = (target_size - dummy_width) // 2 # Halved because this amount is added equally to both sides of the image
-	
-	cropped_mask = cropped_mask[padding_amount_x:-padding_amount_x, :]
-
-if dummy_height < target_size:
-	# Padding was added to the Y axis of the original image
-	
-	padding_amount_y = (target_size - dummy_height) // 2 # Halved because this amount is added equally to both sides of the image
-	
-	cropped_mask = cropped_mask[:, padding_amount_y:-padding_amount_y]
-
-# Resizing the cropped image
-
-# Get the width and height of the processed image
-original_image_size = image.shape[:2]
-
-# Scale the cropped image to these sizes
-cropped_resized_mask = cv2.resize(cropped_mask, (original_image_size[1], original_image_size[0]), interpolation=cv2.INTER_LINEAR)
-
-cropped_resized_contours, _ = cv2.findContours(cropped_resized_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-cropped_resized_contour = max(cropped_resized_contours, key=cv2.contourArea)
-
-# Smooth the contour
-epsilon = 0.00197 * cv2.arcLength(cropped_resized_contour, True) # TODO: Find optimal epsilon value
-smoothed_cropped_resized_contour = cv2.approxPolyDP(cropped_resized_contour, epsilon, True)
-
 ### END POINTLESS CODE ###
 
 # Generate and display visualisation images
 image_contour_area = image.copy()
-image_contour_area = visualise_contour_area_mm(image_contour_area, smoothed_cropped_resized_contour, wound_area_mm)
+image_contour_area = visualise_contour_area_mm(image_contour_area, contour, wound_area_mm)
 
 cv2.imshow('Wound Area', image_contour_area)
 cv2.waitKey(0)
 cv2.destroyAllWindows()
 
 image_contour_size = image.copy()
-image_contour_size = visualise_contour_size_mm(image_contour_size, smoothed_cropped_resized_contour, wound_length_x_mm, wound_length_y_mm)
+image_contour_size = visualise_contour_size_mm(image_contour_size, contour, wound_length_x_mm, wound_length_y_mm)
 
 cv2.imshow('Wound Size', image_contour_size)
 cv2.waitKey(0)

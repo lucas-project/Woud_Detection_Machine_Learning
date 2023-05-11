@@ -2,8 +2,6 @@ import math
 import numpy as np
 import cv2
 
-from v1_coin import detect_coin
-
 ### UTILITY FUNCTIONS ###
 
 # Calculates the length in pixels between two points
@@ -25,20 +23,20 @@ def get_midpoint(point_a, point_b):
 
 ### CONVERSION FUNCTIONS ###
 
-# Convert pixel measurements to millimeters
+# Convert pixel measurements to millimetres
 # NOTE: Set exponent=2 if converting area measurements!
-def pixels_to_millimeters(pixels, pixels_per_millimeter_ratio, exponent=1):
-	return pixels / (pixels_per_millimeter_ratio ** exponent)
+def pixels_to_millimetres(pixels, pixels_per_millimetre_ratio, exponent=1):
+	return pixels / (pixels_per_millimetre_ratio ** exponent)
 
-# Convert millimeter measurements to pixels
+# Convert millimetre measurements to pixels
 # NOTE: Set exponent=2 if converting area measurements!
-def millimeters_to_pixels(millimeters, pixels_per_millimeter_ratio, exponent=1):
-	return millimeters * (pixels_per_millimeter_ratio ** exponent)
+def millimetres_to_pixels(millimetres, pixels_per_millimetre_ratio, exponent=1):
+	return millimetres * (pixels_per_millimetre_ratio ** exponent)
 
-# Calculate the pixels-per-millimeter ratio
-# This function is just to avoid confusion as pixels_to_millimeters() could be used directly
-def calculate_pixels_per_millimeter_ratio(circle_radius_px, reference_radius_mm):
-	return pixels_to_millimeters(circle_radius_px, reference_radius_mm)
+# Calculate the pixels-per-millimetre ratio
+# This function is just to avoid confusion as pixels_to_millimetres() could be used directly
+def calculate_pixels_per_millimetre_ratio(circle_radius_px, reference_radius_mm):
+	return pixels_to_millimetres(circle_radius_px, reference_radius_mm)
 
 ### CONTOUR MEASUREMENTS ###
 
@@ -48,14 +46,14 @@ def get_contour_area_px(contour):
 	
 	return area_px
 
-# Get the area of a contour in millimeters^2
+# Get the area of a contour in millimetres^2
 # NOTE: Set exponent=2 if converting area measurements!
-def get_contour_area_mm(contour, pixels_per_millimeter_ratio):
+def get_contour_area_mm(contour, pixels_per_millimetre_ratio):
 	# Get the area in pixels^2 first
 	area_px = get_contour_area_px(contour)
 	
-	# Convert the result to millimeters^2
-	area_mm = pixels_to_millimeters(area_px, pixels_per_millimeter_ratio, 2)
+	# Convert the result to millimetres^2
+	area_mm = pixels_to_millimetres(area_px, pixels_per_millimetre_ratio, 2)
 	
 	return area_mm
 
@@ -77,14 +75,14 @@ def get_contour_size_px(contour):
 	
 	return x_length_px, y_length_px
 
-# Get the X and Y dimensions of a countour in millimeters
-def get_contour_size_mm(contour, pixels_per_millimeter_ratio):
+# Get the X and Y dimensions of a countour in millimetres
+def get_contour_size_mm(contour, pixels_per_millimetre_ratio):
 	# Get the size in pixels first
 	x_length_px, y_length_px = get_contour_size_px(contour)
 	
-	# Convert the result to millimeters
-	x_length_mm = pixels_to_millimeters(x_length_px, pixels_per_millimeter_ratio)
-	y_length_mm = pixels_to_millimeters(y_length_px, pixels_per_millimeter_ratio)
+	# Convert the result to millimetres
+	x_length_mm = pixels_to_millimetres(x_length_px, pixels_per_millimetre_ratio)
+	y_length_mm = pixels_to_millimetres(y_length_px, pixels_per_millimetre_ratio)
 	
 	return x_length_mm, y_length_mm
 
@@ -94,12 +92,12 @@ def get_contour_size_mm(contour, pixels_per_millimeter_ratio):
 def get_circle_area_px(radius_px):
 	return math.pi * (radius_px ** 2)
 
-def get_circle_area_mm(coin_area_px, pixels_per_millimeter_ratio):
-	return pixels_to_millimeters(coin_area_px, pixels_per_millimeter_ratio, 2)
+def get_circle_area_mm(coin_area_px, pixels_per_millimetre_ratio):
+	return pixels_to_millimetres(coin_area_px, pixels_per_millimetre_ratio, 2)
 
-def get_circle_radius_mm(radius_px, pixels_per_millimeter_ratio):
-	return pixels_to_millimeters(radius_px, pixels_per_millimeter_ratio)
+def get_circle_radius_mm(radius_px, pixels_per_millimetre_ratio):
+	return pixels_to_millimetres(radius_px, pixels_per_millimetre_ratio)
 
 # Get the radius of a circle in pixels^2
-def get_circle_radius_px(radius_mm, pixels_per_millimeter_ratio):
-	return millimeters_to_pixels(radius_mm, pixels_per_millimeter_ratio)
+def get_circle_radius_px(radius_mm, pixels_per_millimetre_ratio):
+	return millimetres_to_pixels(radius_mm, pixels_per_millimetre_ratio)

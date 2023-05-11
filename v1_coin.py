@@ -138,9 +138,9 @@ def detect_coin(image):
                 # cv2.circle(image, (x, y), radius, (0, 255, 0), 2)
                 # cv2.imshow('best circle now', image)
                 # cv2.waitKey(0)
-                print(f"difference now: {difference}")
+                #print(f"difference now: {difference}")
                 best_difference = difference
-                print(f"best difference now: {best_difference}")
+                #print(f"best difference now: {best_difference}")
         
         # Draw the best circle
         if best_circle is not None:
@@ -149,9 +149,9 @@ def detect_coin(image):
             circle_area = math.pi * radius**2
             image_area = image.shape[0] * image.shape[1]
             ratio = circle_area / image_area
-            cv2.circle(image, (x, y), radius, (0, 255, 0), 2)
-            cv2.circle(image, (x, y), 2, (0, 0, 255), 3)
-            print(f"Ratio of circle area to image area: {ratio:.6f}")
+            #cv2.circle(image, (x, y), radius, (0, 255, 0), 2)
+            #cv2.circle(image, (x, y), 2, (0, 0, 255), 3)
+            #print(f"Ratio of circle area to image area: {ratio:.6f}")
             # cv2.imshow('best circle', image)
             # cv2.waitKey(0)
             return best_circle, ratio
@@ -215,7 +215,7 @@ def estimate_actual_size(image, binary_mask, coin_detected):
     pixels_to_metric_ratio = coin_radius / coin_radius_mm
     rect_size_mm = rect[1] / pixels_to_metric_ratio
     
-    print(f'The wound is {rect_size_mm[1]}mm wide, and {rect_size_mm[1]}mm long')   # Length and width are arbitrary.
+    #print(f'The wound is {rect_size_mm[1]}mm wide, and {rect_size_mm[1]}mm long')   # Length and width are arbitrary.
                                                                                     # Could be replaced so that the longest measurement is length
                                                                                     # But I don't think it's necessary
     

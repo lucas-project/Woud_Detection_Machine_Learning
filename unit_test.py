@@ -47,19 +47,19 @@ class TestMeasurements(unittest.TestCase):
 		best_circle, _ = detect_coin(self.image)
 		self.coin_position_x, self.coin_position_y, self.coin_radius_px = best_circle
 		
-		self.pixels_per_millimeter_ratio = calculate_pixels_per_millimeter_ratio(self.coin_radius_px, self.coin_radius_mm)
+		self.pixels_per_millimetre_ratio = calculate_pixels_per_millimetre_ratio(self.coin_radius_px, self.coin_radius_mm)
 		
 		self.coin_area_px = get_circle_area_px(self.coin_radius_px)
 	
 	# Tests the following functions:
 	# 	detect_coin (RADIUS ONLY)
-	# 	calculate_pixels_per_millimeter_ratio
+	# 	calculate_pixels_per_millimetre_ratio
 	# 	get_circle_radius_mm
-	# 	pixels-to-millimeters
+	# 	pixels-to-millimetres
 	def test_get_circle_radius_mm(self):
 		expected = 10.25
 		
-		result = get_circle_radius_mm(self.coin_radius_px, self.pixels_per_millimeter_ratio)
+		result = get_circle_radius_mm(self.coin_radius_px, self.pixels_per_millimetre_ratio)
 		
 		# Calculate the accuracy of the result
 		accuracy = calculate_accuracy(expected, result)
@@ -79,13 +79,13 @@ class TestMeasurements(unittest.TestCase):
 	
 	# Tests the following functions:
 	# 	detect_coin (RADIUS ONLY)
-	# 	calculate_pixels_per_millimeter_ratio
+	# 	calculate_pixels_per_millimetre_ratio
 	# 	get_circle_area_px
-	# 	pixels_to_millimeters
+	# 	pixels_to_millimetres
 	def test_get_circle_area_mm(self):
 		expected = 330.06
 		
-		result = get_circle_area_mm(self.coin_area_px, self.pixels_per_millimeter_ratio)
+		result = get_circle_area_mm(self.coin_area_px, self.pixels_per_millimetre_ratio)
 		
 		# Calculate the accuracy of the result
 		accuracy = calculate_accuracy(expected, result)
@@ -105,17 +105,17 @@ class TestMeasurements(unittest.TestCase):
 	
 	# Tests the following functions:
 	# 	detect_coin (RADIUS ONLY. Positions are used, but are not validated)
-	# 	calculate_pixels_per_millimeter_ratio
+	# 	calculate_pixels_per_millimetre_ratio
 	# 	get_contour_area_mm
 	# 	get_contour_area_px
-	# 	pixels_to_millimeters
+	# 	pixels_to_millimetres
 	def test_get_contour_area_mm(self):
 		expected = 330.06
 		
 		# Convert the circle to a contour
 		contour = circle_to_contour(self.image, self.coin_position_x, self.coin_position_y, self.coin_radius_px)
 		
-		result = get_contour_area_mm(contour, self.pixels_per_millimeter_ratio)
+		result = get_contour_area_mm(contour, self.pixels_per_millimetre_ratio)
 		
 		# Calculate the accuracy of the result
 		accuracy = calculate_accuracy(expected, result)
@@ -134,17 +134,17 @@ class TestMeasurements(unittest.TestCase):
 	
 	# Tests the following functions:
 	# 	detect_coin (RADIUS ONLY. Positions are used, but are not validated)
-	# 	calculate_pixels_per_millimeter_ratio
+	# 	calculate_pixels_per_millimetre_ratio
 	# 	get_contour_size_mm
 	# 	get_contour_size_px
-	# 	pixels_to_millimeters
+	# 	pixels_to_millimetres
 	def test_get_contour_size_mm(self):
 		expected = (20.50, 20.50)
 		
 		# Convert the circle to a contour
 		contour = circle_to_contour(self.image, self.coin_position_x, self.coin_position_y, self.coin_radius_px)
 		
-		x_length_mm, y_length_mm = get_contour_size_mm(contour, self.pixels_per_millimeter_ratio)
+		x_length_mm, y_length_mm = get_contour_size_mm(contour, self.pixels_per_millimetre_ratio)
 		
 		# Calculate the accuracy of the results
 		accuracy_x = calculate_accuracy(expected[0], x_length_mm)
@@ -171,7 +171,7 @@ class TestMeasurements(unittest.TestCase):
 		del self.coin_position_x
 		del self.coin_position_y
 		del self.coin_radius_px
-		del self.pixels_per_millimeter_ratio
+		del self.pixels_per_millimetre_ratio
 		del self.coin_area_px
 
 class TestCoin(unittest.TestCase):
@@ -186,7 +186,7 @@ class TestCoin(unittest.TestCase):
 	
 	# Tests the following functions:
 	# 	NONE
-	@unittest.skip("v1_coin.py does not contain a function that returns the radius in millimeters, or one which can convert it from pixels to millimeters")
+	@unittest.skip("v1_coin.py does not contain a function that returns the radius in millimetres, or one which can convert it from pixels to millimetres")
 	def test_coin_actual_radius(self):
 		expected = 10.25
 		
@@ -306,7 +306,7 @@ class TestComparisons(unittest.TestCase):
 		best_circle, self.ratio_coin = detect_coin(self.image)
 		self.coin_position_x, self.coin_position_y, self.coin_radius_px = best_circle
 		
-		self.pixels_per_millimeter_ratio = calculate_pixels_per_millimeter_ratio(self.coin_radius_px, self.coin_radius_mm)
+		self.pixels_per_millimetre_ratio = calculate_pixels_per_millimetre_ratio(self.coin_radius_px, self.coin_radius_mm)
 		
 		self.coin_area_px = get_circle_area_px(self.coin_radius_px)
 	
@@ -317,7 +317,7 @@ class TestComparisons(unittest.TestCase):
 		measurement_function = get_circle_area_mm
 		coin_function = calculate_actual_coin_area
 		
-		measurement_result = measurement_function(self.coin_area_px, self.pixels_per_millimeter_ratio)
+		measurement_result = measurement_function(self.coin_area_px, self.pixels_per_millimetre_ratio)
 		coin_result = coin_function(self.coin_diameter_mm)
 		
 		# Calculate the accuracy of the results
@@ -337,6 +337,7 @@ class TestComparisons(unittest.TestCase):
 			loser  = '{0} (Accuracy: {1}%)'.format(measurement_function.__name__, measurement_accuracy)
 		elif coin_accuracy == measurement_accuracy:
 			winner = 'DRAW (Accuracy: {0}% - {1}%)'.format(measurement_accuracy, coin_accuracy)
+			loser = '-'
 		
 		print()
 		print('Function: {0}'.format(inspect.currentframe().f_code.co_name))
@@ -377,7 +378,7 @@ class TestComparisons(unittest.TestCase):
 		coin_actual_area = calculate_actual_coin_area(self.coin_diameter_mm)
 		
 		# Calculate results for both functions
-		measurement_result = measurement_function(contour, self.pixels_per_millimeter_ratio)
+		measurement_result = measurement_function(contour, self.pixels_per_millimetre_ratio)
 		coin_result = coin_function(self.ratio_coin, coin_actual_area, ratio_wound)
 		
 		# Calculate the accuracy of the results
@@ -397,6 +398,7 @@ class TestComparisons(unittest.TestCase):
 			loser  = '{0} (Accuracy: {1}%)'.format(measurement_function.__name__, measurement_accuracy)
 		elif coin_accuracy == measurement_accuracy:
 			winner = 'DRAW (Accuracy: {0}% - {1}%)'.format(measurement_accuracy, coin_accuracy)
+			loser = '-'
 		
 		print()
 		print('Function: {0}'.format(inspect.currentframe().f_code.co_name))
@@ -413,7 +415,7 @@ class TestComparisons(unittest.TestCase):
 		del self.coin_position_x
 		del self.coin_position_y
 		del self.coin_radius_px
-		del self.pixels_per_millimeter_ratio
+		del self.pixels_per_millimetre_ratio
 		del self.coin_area_px
 		del self.ratio_coin
 

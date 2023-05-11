@@ -49,7 +49,7 @@ area_px = cv2.contourArea(contour)
 
 # PIXELS PER METRIC RATIO
 
-# The radius of an Australian $2 coin in millimeters
+# The radius of an Australian $2 coin in millimetres
 coin_radius_mm = 10.25
 #coin_radius_mm = 6.5 # FOR VALIDATION ONLY! This is the size of the coin on screen, if a ruler is held up to the screen.
 
@@ -114,7 +114,7 @@ x_length_px = math.sqrt((top_midpoint_x - bottom_midpoint_x)**2 + (top_midpoint_
 y_length_px = math.sqrt((left_midpoint_x - right_midpoint_x)**2 + (left_midpoint_y - right_midpoint_y)**2)
 #print(f'X: {x_length_px} Y: {y_length_px}')
 
-# Convert these to millimeters
+# Convert these to millimetres
 x_length_mm = x_length_px / pixels_per_metric
 y_length_mm = y_length_px / pixels_per_metric
 #print(f'X: {x_length_mm} Y: {y_length_mm}')
