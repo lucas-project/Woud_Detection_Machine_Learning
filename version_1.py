@@ -193,15 +193,7 @@ cv2.imshow('Length Measurements', image_lengths)
 cv2.waitKey(0)
 cv2.destroyAllWindows()
 
-###
-
-### TEMP - FOR TESTING ONLY!
-
-quit()
-
-### END TEMP
-
-###
+### AI MODEL ###
 
 # load_images_and_masks
 X, y = load_images_and_masks(images_json_path, masks_json_path)
