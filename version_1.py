@@ -52,7 +52,7 @@ for image_file in os.listdir(input_directory):
         cv2.imwrite(output_path, contour_image)
 
         # Display the output image
-        # cv2.imshow('Wound Image', wound_area)
+        cv2.imshow(f'Wound Image for {image_file}', wound_area)
         cv2.waitKey(0)
 
 cv2.destroyAllWindows()
@@ -216,11 +216,11 @@ for i, (binary_mask, original_dim) in enumerate(zip(binary_masks, original_dimen
     remove_padding_mask = remove_padding(binary_mask, original_width, original_height)
     resized_mask = resize_to_original(remove_padding_mask, original_width, original_height)
     resized_binary_masks.append(resized_mask)
-    display_image = convert_image_for_display(original_images[i])
-    cv2.imshow(f'Original Image {i}', display_image)
-    cv2.imshow(f'Resized Binary Mask {i}', resized_mask)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    # display_image = convert_image_for_display(original_images[i])
+    # cv2.imshow(f'Original Image {i}', display_image)
+    # cv2.imshow(f'Resized Binary Mask {i}', resized_mask)
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
 
 
 for i, binary_mask_array in enumerate(resized_binary_masks):
