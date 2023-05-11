@@ -10,15 +10,15 @@ from tensorflow.keras.callbacks import EarlyStopping
 import re
 import matplotlib.pyplot as plt
 from skimage import measure
-#from v1_border import build_unet, display_json_masks, extract_wound_area, load_images_and_masks, extract_blue_contour, process_image, process_images, split_json_objects, augment_data
-from v1_border import build_unet, display_json_masks, extract_wound_area, load_images_and_masks, process_image, process_images, split_json_objects, augment_data
+#from v1_border import build_unet, display_json_masks, extract_wound_area, load_images_and_masks, extract_blue_contour, process_image, process_images, split_json_objects, augment_data, resize_to_original, remove_padding
+from v1_border import build_unet, display_json_masks, extract_wound_area, load_images_and_masks, process_image, process_images, split_json_objects, augment_data, resize_to_original, remove_padding
 #from v1_coin import display_coin_detection, detect_coin, calculate_actual_coin_area, calculate_ratio_wound_image, calculate_actual_wound_area
 from v1_coin import detect_coin
 from v1_processing import extract_contour_from_outlined_image
 from v1_measurement import calculate_pixels_per_millimetre_ratio, get_circle_area_px, get_circle_area_mm, get_contour_size_px, get_contour_area_px, get_contour_size_mm, get_contour_area_mm
 from v1_visualisation import visualise_circle_area_mm, visualise_circle_radius_mm, visualise_circle_diameter_mm, visualise_contour_area_mm, visualise_contour_size_mm
 from v1_colour import calculate_color_percentage, quantize_image, extract_color_information
-from v1_evaluation import load_evaluation_images
+from v1_evaluation import load_evaluation_images, load_fake_evaluation_images
 import time
 from keras.models import load_model
 
@@ -28,11 +28,12 @@ masks_json_path = 'fake_jj/'
 #images_png_path = 'fake_png_1/'
 #masks_png_path = 'fake_png_2/'
 evaluation_path = 'fake_evaluation/'
-#input_directory = 'contour/'  
-#output_directory = 'contour_processed/' 
+#input_directory = 'contour/'
+#output_directory = 'contour_processed/'
 #input_file = 'splited_json/1.json'
 #output_folder = 'splited_json/'
-model_path = 'models/wound_segmentation_model_1683183688.h5'
+model_path = 'models/model_finetuned_1683628583_5_0.0002.h5'
+batch_size = 8
 
 # This function only used when need to split .json file from labelbox to small .json file,  
 # file name needed to changed each time to generate correct file name.
@@ -58,7 +59,7 @@ model_path = 'models/wound_segmentation_model_1683183688.h5'
 #        cv2.imwrite(output_path, contour_image)
 #
 #        # Display the output image
-#        cv2.imshow('Wound Image', wound_area)
+#        cv2.imshow(f'Wound Image for {image_file}', wound_area)
 #        cv2.waitKey(0)
 
 #cv2.destroyAllWindows()
@@ -251,7 +252,7 @@ else:
 
 
     # Train the model
-    batch_size = 8  
+
 
     
 
@@ -270,7 +271,7 @@ else:
     early_stopping = EarlyStopping(monitor='val_loss', patience=5, verbose=1, restore_best_weights=True)
 
     history = model.fit(train_generator, steps_per_epoch=len(X_train) // batch_size, validation_data=val_generator,
-              validation_steps=len(X_val) // batch_size, epochs=5)
+              validation_steps=len(X_val) // batch_size, epochs=8)
 
     # Save the trained model
     model.save(model_path)
@@ -287,7 +288,7 @@ if load_old_model.lower() == 'n':
 
 
 additional_input = True  
-evaluation_images = load_evaluation_images(evaluation_path, additional_input)
+evaluation_images, original_dimensions, original_images = load_fake_evaluation_images(evaluation_path, additional_input)
 
 # Predict and display results
 predicted_masks = model.predict(evaluation_images)
@@ -334,6 +335,39 @@ for i in range(len(evaluation_images)):
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
+
+resized_binary_masks = []
+for i, (binary_mask, original_dim) in enumerate(zip(binary_masks, original_dimensions)):
+    original_height, original_width = original_dim
+    remove_padding_mask = remove_padding(binary_mask, original_width, original_height)
+    resized_mask = resize_to_original(remove_padding_mask, original_width, original_height)
+    resized_binary_masks.append(resized_mask)
+    # display_image = convert_image_for_display(original_images[i])
+    # cv2.imshow(f'Original Image {i}', display_image)
+    # cv2.imshow(f'Resized Binary Mask {i}', resized_mask)
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
+
+
+for i, binary_mask_array in enumerate(resized_binary_masks):
+    mask_pixels = np.sum(binary_mask_array == 255)  # Count the number of mask pixels (value 255)
+    total_pixels = binary_mask_array.size  # Calculate the total number of pixels in the binary mask
+    mask_pixel_ratio = mask_pixels / total_pixels  # Calculate the mask pixel ratio
+
+    print(f"Mask pixel ratio for image {i}: {mask_pixel_ratio:.4f}")
+    print(f"Mask pixel for image {i}: {mask_pixels:.4f}")
+
+
+# resized_binary_masks_pixels = []
+# for resized_mask in resized_binary_masks:
+#     binary_mask_pixels = np.where(resized_mask > 0)  # Get the indices where the binary mask is non-zero
+#     mask_pixels = []
+#     for row, col in zip(binary_mask_pixels[0], binary_mask_pixels[1]):
+#         pixel_value = resized_mask[row, col]
+#         mask_pixels.append((row, col, pixel_value))
+#     resized_binary_masks_pixels.append(mask_pixels)
+# print (resized_binary_masks_pixels)
+
 # Save the model
 if load_old_model.lower() == 'n':
     timestamp = int(time.time())
@@ -348,11 +382,11 @@ if fine_tune_model.lower() == 'y':
     for layer in model.layers[-5:]:
         layer.trainable = True
 
-    new_images_json_path = 'new_dataset/images_json/'
-    new_masks_json_path = 'new_dataset/masks_json/'
+    new_images_json_path = 'fine_tune_1/'
+    new_masks_json_path = 'fine_tune_1_masks/'
 
     # Compile the model with a potentially different learning rate
-    optimizer = Adam(learning_rate=0.0001)
+    optimizer = Adam(learning_rate=0.0003)
     model.compile(optimizer=optimizer, loss=BinaryCrossentropy(), metrics=[dice_coefficient])
 
     # Load the new dataset images and masks
@@ -373,7 +407,7 @@ if fine_tune_model.lower() == 'y':
                             mask_datagen_new.flow(y_val_new, batch_size=batch_size, seed=42))
 
     history = model.fit(train_generator_new, steps_per_epoch=len(X_train_new) // batch_size, validation_data=val_generator_new,
-              validation_steps=len(X_val_new) // batch_size, epochs=5)
+              validation_steps=len(X_val_new) // batch_size, epochs=8)
 
     plt.plot(history.history['loss'], label='Training Loss')
     plt.plot(history.history['val_loss'], label='Validation Loss')
@@ -381,10 +415,25 @@ if fine_tune_model.lower() == 'y':
     plt.ylabel('Loss')
     plt.legend()
     plt.title('Training and Validation Loss')
+
     plt.show()
 
     # Save the fine-tuned model
     timestamp = int(time.time())
+    # Load evaluation images and display them side by side with their masks
+    evaluation_images, original_dimensions, original_images = load_fake_evaluation_images(evaluation_path, additional_input)
+
+    # Predict and display results
+    predicted_masks = model.predict(evaluation_images)
+
+    # ... Existing code for processing and displaying the predicted masks ...
+
+    for i, (original_image, resized_mask) in enumerate(zip(original_images, resized_binary_masks)):
+        display_image = convert_image_for_display(original_image)
+        cv2.imshow(f'Original Image {i}', display_image)
+        cv2.imshow(f'Resized Binary Mask {i}', resized_mask)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
     model.save(f'models/model_finetuned_{timestamp}.h5')
 
 

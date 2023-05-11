@@ -49,3 +49,50 @@ def load_evaluation_images(evaluation_path, additional_input):
         evaluation_images_array[i, :height, :width] = image
 
     return evaluation_images_array
+
+
+def load_fake_evaluation_images(evaluation_path, additional_input):
+    min_radius = 10
+    max_radius = 50
+    images = []
+    evaluation_images = []
+    image_files = os.listdir(evaluation_path)
+    image_files = sorted(image_files, key=lambda x: int(re.search(r'\d+', x).group()))
+
+    # Add a new list to store original images
+    original_images = []
+     
+    # Create a list to store the original dimensions
+    original_dimensions = []
+
+    for file in image_files:
+        image = cv2.imread(os.path.join(evaluation_path, file), cv2.IMREAD_COLOR)
+        if image is None:
+            print(f"Unable to read image file {file}. Skipping...")
+            continue
+
+        # Save the original dimensions
+        original_height, original_width = image.shape[:2]
+        original_dimensions.append((original_height, original_width))
+        original_images.append(image)  # Append the original image to the list
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        image = resize_with_aspect_ratio(image, 256)
+        image = pad_image(image, 256)
+
+        if additional_input:  # Use the boolean value to conditionally add the additional channel
+            mean_pixel_value = np.mean(image, axis=-1, keepdims=True)
+            image = np.concatenate([image, mean_pixel_value], axis=-1)
+
+        evaluation_images.append(image)
+        print(f"Loaded evaluation image {file}")
+
+    max_width = max([img.shape[1] for img in evaluation_images])
+    max_height = max([img.shape[0] for img in evaluation_images])
+
+    evaluation_images_array = np.zeros((len(evaluation_images), max_height, max_width, 4), dtype=np.float32)
+
+    for i, image in enumerate(evaluation_images):
+        height, width = image.shape[:2]
+        evaluation_images_array[i, :height, :width] = image
+
+    return evaluation_images_array, original_dimensions, original_images

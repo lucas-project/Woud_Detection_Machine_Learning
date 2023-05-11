@@ -52,6 +52,38 @@ def pad_image(image, target_size):
         return np.pad(image, ((top_pad, bottom_pad), (left_pad, right_pad)), mode='constant')
     else:
         raise ValueError("The input image must have 2 or 3 dimensions.")
+    
+# Remove padding to output mask to store original image size mask
+def remove_padding(image, original_width, original_height):
+    height, width = image.shape[:2]
+
+    if original_height > original_width:
+        resize_ratio = height / original_height 
+        resize_width = int(resize_ratio * original_width)
+        left_pad = (width - resize_width) // 2
+        right_pad = width - resize_width - left_pad
+        top_pad =0
+        bottom_pad = 0
+    else:
+        resize_ratio = width / original_width 
+        resize_height = int(resize_ratio * original_height)
+        top_pad = (height - resize_height) // 2
+        bottom_pad = height - resize_height - top_pad
+        left_pad = 0
+        right_pad = 0
+
+    if image.ndim == 3:
+        return image[top_pad:height - bottom_pad, left_pad:width - right_pad, :]
+    elif image.ndim == 2:
+        return image[top_pad:height - bottom_pad, left_pad:width - right_pad]
+    else:
+        raise ValueError("The input image must have 2 or 3 dimensions.")
+
+
+def resize_to_original(image, original_width, original_height):
+    return cv2.resize(image, (original_width, original_height))
+
+
 
 cache_folder = "cache"
     
@@ -164,7 +196,7 @@ def augment_data(images, masks, batch_size, image_datagen, mask_datagen):
                     A.RandomRotate90(p=0.5),
                     A.RandomBrightnessContrast(p=0.5),
                     A.ShiftScaleRotate(shift_limit=0.1, scale_limit=0.1, rotate_limit=20, p=0.5),
-                    A.RandomContrast(limit=0.2, p=0.5),
+                    # A.RandomContrast(limit=0.2, p=0.5),
                     A.RandomGamma(gamma_limit=(80, 120), p=0.5),
                     # A.RandomCrop(height=128, width=128, p=0.5),
                     A.GaussianBlur(blur_limit=3, p=0.5),
@@ -409,7 +441,7 @@ def split_json_objects(input_file, output_folder):
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
 
-    file_number = 238
+    file_number = 371
 
     for obj in data:
         output_file = os.path.join(output_folder, f"{file_number}.json")
