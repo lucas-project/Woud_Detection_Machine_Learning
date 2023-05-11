@@ -145,7 +145,7 @@ else:
     early_stopping = EarlyStopping(monitor='val_loss', patience=5, verbose=1, restore_best_weights=True)
 
     history = model.fit(train_generator, steps_per_epoch=len(X_train) // batch_size, validation_data=val_generator,
-              validation_steps=len(X_val) // batch_size, epochs=5)
+              validation_steps=len(X_val) // batch_size, epochs=8)
 
     # Save the trained model
     model.save(model_path)
@@ -281,7 +281,7 @@ if fine_tune_model.lower() == 'y':
                             mask_datagen_new.flow(y_val_new, batch_size=batch_size, seed=42))
 
     history = model.fit(train_generator_new, steps_per_epoch=len(X_train_new) // batch_size, validation_data=val_generator_new,
-              validation_steps=len(X_val_new) // batch_size, epochs=5)
+              validation_steps=len(X_val_new) // batch_size, epochs=8)
 
     plt.plot(history.history['loss'], label='Training Loss')
     plt.plot(history.history['val_loss'], label='Validation Loss')
@@ -294,6 +294,20 @@ if fine_tune_model.lower() == 'y':
 
     # Save the fine-tuned model
     timestamp = int(time.time())
+    # Load evaluation images and display them side by side with their masks
+    evaluation_images, original_dimensions, original_images = load_fake_evaluation_images(evaluation_path, additional_input)
+
+    # Predict and display results
+    predicted_masks = model.predict(evaluation_images)
+
+    # ... Existing code for processing and displaying the predicted masks ...
+
+    for i, (original_image, resized_mask) in enumerate(zip(original_images, resized_binary_masks)):
+        display_image = convert_image_for_display(original_image)
+        cv2.imshow(f'Original Image {i}', display_image)
+        cv2.imshow(f'Resized Binary Mask {i}', resized_mask)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
     model.save(f'models/model_finetuned_{timestamp}.h5')
 
 
