@@ -6,7 +6,7 @@ import numpy as np
 import cv2
 
 # Extracts a contour from an image which has a blue outline drawn on it
-def extract_contour_from_outlined_image(image):
+def extract_contours_from_outlined_image(image):
 	hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 	
 	# Define the lower and upper boundaries for the blue color
@@ -19,8 +19,11 @@ def extract_contour_from_outlined_image(image):
 	# Perform contour detection
 	contours, _ = cv2.findContours(blue_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 	
-	# Select the largest contour from the list
-	largest_contour = max(contours, key=cv2.contourArea)
+	## Select the largest contour from the list
+	#largest_contour = max(contours, key=cv2.contourArea)
 	
 	# Return the largest contour
-	return largest_contour
+	#return largest_contour
+	
+	# Return list of contours
+	return contours

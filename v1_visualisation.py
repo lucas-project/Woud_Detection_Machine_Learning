@@ -13,7 +13,13 @@ font = ImageFont.truetype(font_path, font_size)
 def drawText(image, text, position_x, position_y):
 	image_pil = Image.fromarray(image)
 	draw = ImageDraw.Draw(image_pil)
-	draw.text((int(position_x), int(position_y)), text, font=font, fill=(255, 255, 255))
+	
+	# Calculate the centre point of the text
+	text_size = draw.textsize(text, font=font)
+	text_x = position_x - text_size[0] / 2
+	text_y = position_y - text_size[1] / 2
+	
+	draw.text((int(text_x), int(text_y)), text, font=font, fill=(255, 255, 255))
 	image = np.array(image_pil)
 	
 	return image
@@ -21,7 +27,7 @@ def drawText(image, text, position_x, position_y):
 ### VISUALISATION FUNCTIONS ###
 
 # Visualise a OpenCV circle showing its area in millimetres
-def visualise_circle_area_mm(image, circle, area_mm):
+def visualise_circle_area_mm(image, circle, area_mm, name=None):
 	position_x, position_y, radius_px = circle
 	
 	# Create a copy of the image
@@ -38,12 +44,17 @@ def visualise_circle_area_mm(image, circle, area_mm):
 	cv2.circle(image, (position_x, position_y), radius_px, (255, 0, 0), 2)
 	
 	# Add the area measurement as text
-	image = drawText(image, "{:.2f}mm²".format(area_mm), position_x, position_y)
+	text = '{:.2f}mm²'.format(area_mm)
+	
+	if name:
+		text = str(name) + '\n' + text
+	
+	image = drawText(image, text, position_x, position_y)
 	
 	return image
 
 # Visualise a OpenCV circle showing its radius in millimetres
-def visualise_circle_radius_mm(image, circle, radius_mm):
+def visualise_circle_radius_mm(image, circle, radius_mm, name=None):
 	position_x, position_y, radius_px = circle
 	
 	# Draw a ring around the circle
@@ -58,13 +69,17 @@ def visualise_circle_radius_mm(image, circle, radius_mm):
 	# Draw a line from the center to the edge
 	cv2.line(image, (position_x, position_y), (position_x + radius_px, position_y), (255, 0, 255), 2)
 	
+	# Add the wound name as text, if one is given
+	if name:
+		image = drawText(image, name, position_x, position_y)
+	
 	# Add the radius measurement as text
-	image = drawText(image, "{:.2f}mm".format(radius_mm), position_x + radius_px - 15, position_y - 10)
+	image = drawText(image, '{:.2f}mm'.format(radius_mm), position_x + radius_px - 15, position_y - 10)
 	
 	return image
 
 # Visualise a OpenCV circle showing its diameter in millimetres
-def visualise_circle_diameter_mm(image, circle, diameter_mm):
+def visualise_circle_diameter_mm(image, circle, diameter_mm, name=None):
 	position_x, position_y, radius_px = circle
 	
 	# Draw a ring around the circle
@@ -77,13 +92,17 @@ def visualise_circle_diameter_mm(image, circle, diameter_mm):
 	# Draw a line through the center of the circle
 	cv2.line(image, (position_x - radius_px, position_y), (position_x + radius_px, position_y), (255, 0, 255), 2)
 	
-	# Add the diameter measurement as text
-	image = drawText(image, "{:.2f}mm".format(diameter_mm), position_x + radius_px - 15, position_y - 10)
+	# Add the wound name as text, if one is given
+	if name:
+		image = drawText(image, name, position_x, position_y)
+	
+	# Add the radius measurement as text
+	image = drawText(image, '{:.2f}mm'.format(diameter_mm), position_x + radius_px - 15, position_y - 10)
 	
 	return image
 
 # Visualise an OpenCV contour showing its area in millimetres
-def visualise_contour_area_mm(image, contour, area_mm):
+def visualise_contour_area_mm(image, contour, area_mm, name=None):
 	# Create a copy of the image
 	overlay_image = image.copy()
 	
@@ -99,16 +118,21 @@ def visualise_contour_area_mm(image, contour, area_mm):
 	
 	# Get the centre point of the contour
 	moments = cv2.moments(contour)
-	center_x = int(moments["m10"] / moments["m00"])
-	center_y = int(moments["m01"] / moments["m00"])
+	center_x = int(moments['m10'] / moments['m00'])
+	center_y = int(moments['m01'] / moments['m00'])
 	
 	# Add the area measurement as text
-	image = drawText(image, "{:.2f}mm²".format(area_mm), center_x, center_y)
+	text = '{:.2f}mm²'.format(area_mm)
+	
+	if name:
+		text = str(name) + '\n' + text
+	
+	image = drawText(image, text, center_x, center_y)
 	
 	return image
 
 # Visualise an OpenCV contour showing width and height in millimetres
-def visualise_contour_size_mm(image, contour, size_x_mm, size_y_mm):
+def visualise_contour_size_mm(image, contour, size_x_mm, size_y_mm, name=None):
 	# Calculate a rect around the contour.
 	rect = cv2.minAreaRect(contour)
 	
@@ -144,8 +168,18 @@ def visualise_contour_size_mm(image, contour, size_x_mm, size_y_mm):
 	cv2.line(image, top_midpoint, bottom_midpoint, (255, 0, 255), 2)
 	cv2.line(image, left_midpoint, right_midpoint, (255, 0, 255), 2)
 	
+	
+	# Add the wound name as text, if one is given
+	if name:
+		# Get the centre point of the contour
+		moments = cv2.moments(contour)
+		center_x = int(moments['m10'] / moments['m00'])
+		center_y = int(moments['m01'] / moments['m00'])
+		
+		image = drawText(image, name, center_x, center_y)
+	
 	# Add the size measurements as text
-	image = drawText(image, "{:.2f}mm".format(size_x_mm), top_midpoint[0] - 15, top_midpoint[1] - 10)
-	image = drawText(image, "{:.2f}mm".format(size_y_mm), left_midpoint[0] - 15, left_midpoint[1] - 10)
+	image = drawText(image, '{:.2f}mm'.format(size_x_mm), top_midpoint[0] - 15, top_midpoint[1] - 10)
+	image = drawText(image, '{:.2f}mm'.format(size_y_mm), left_midpoint[0] - 15, left_midpoint[1] - 10)
 	
 	return image
