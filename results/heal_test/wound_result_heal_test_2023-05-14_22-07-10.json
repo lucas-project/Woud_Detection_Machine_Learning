@@ -1,0 +1,1 @@
+{"name": "heal_test", "date": "2023-05-14 22:07:10", "image": "results\\heal_test\\wound_image_heal_test_2023-05-14_22-07-10.jpg", "mask": "results\\heal_test\\wound_mask_heal_test_2023-05-14_22-07-10.jpg", "wounds": [{"id": 0, "size_x": 9.512793017105649, "size_y": 28.63665216733377, "area": 192.56281913464122}]}
