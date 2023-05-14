@@ -44,7 +44,7 @@ def visualise_circle_area_mm(image, circle, area_mm, name=None):
 	cv2.circle(image, (position_x, position_y), radius_px, (255, 0, 0), 2)
 	
 	# Add the area measurement as text
-	text = '{:.2f}mm²'.format(area_mm)
+	text = f'{area_mm:.2f}mm²'
 	
 	if name:
 		text = str(name) + '\n' + text
@@ -74,7 +74,7 @@ def visualise_circle_radius_mm(image, circle, radius_mm, name=None):
 		image = drawText(image, name, position_x, position_y)
 	
 	# Add the radius measurement as text
-	image = drawText(image, '{:.2f}mm'.format(radius_mm), position_x + radius_px - 15, position_y - 10)
+	image = drawText(image, f'{radius_mm:.2f}mm', position_x + radius_px - 15, position_y - 10)
 	
 	return image
 
@@ -97,7 +97,7 @@ def visualise_circle_diameter_mm(image, circle, diameter_mm, name=None):
 		image = drawText(image, name, position_x, position_y)
 	
 	# Add the radius measurement as text
-	image = drawText(image, '{:.2f}mm'.format(diameter_mm), position_x + radius_px - 15, position_y - 10)
+	image = drawText(image, f'{diameter_mm:.2f}mm', position_x + radius_px - 15, position_y - 10)
 	
 	return image
 
@@ -122,7 +122,7 @@ def visualise_contour_area_mm(image, contour, area_mm, name=None):
 	center_y = int(moments['m01'] / moments['m00'])
 	
 	# Add the area measurement as text
-	text = '{:.2f}mm²'.format(area_mm)
+	text = f'{area_mm:.2f}mm²'
 	
 	if name:
 		text = str(name) + '\n' + text
@@ -179,7 +179,7 @@ def visualise_contour_size_mm(image, contour, size_x_mm, size_y_mm, name=None):
 		image = drawText(image, name, center_x, center_y)
 	
 	# Add the size measurements as text
-	image = drawText(image, '{:.2f}mm'.format(size_x_mm), top_midpoint[0] - 15, top_midpoint[1] - 10)
-	image = drawText(image, '{:.2f}mm'.format(size_y_mm), left_midpoint[0] - 15, left_midpoint[1] - 10)
+	image = drawText(image, f'{size_x_mm:.2f}mm', top_midpoint[0] - 15, top_midpoint[1] - 10)
+	image = drawText(image, f'{size_y_mm:.2f}mm', left_midpoint[0] - 15, left_midpoint[1] - 10)
 	
 	return image
