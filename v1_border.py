@@ -441,7 +441,7 @@ def split_json_objects(input_file, output_folder):
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
 
-    file_number = 410
+    file_number = 0
 
     for obj in data:
         output_file = os.path.join(output_folder, f"{file_number}.json")
