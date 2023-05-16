@@ -8,7 +8,9 @@ from PIL import Image
 from io import BytesIO
 from tensorflow.keras.layers import Conv2D, MaxPooling2D, UpSampling2D, Concatenate
 from tensorflow.keras.layers import BatchNormalization
-from tensorflow.keras.layers import BatchNormalization
+from sklearn.model_selection import train_test_split
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
 import re
 import matplotlib.pyplot as plt
 from skimage import measure
@@ -18,6 +20,19 @@ import json
 import shutil
 import albumentations as A
 from albumentations import Compose, ElasticTransform
+from tensorflow.keras.losses import BinaryCrossentropy
+import time
+
+# Data augmentation
+data_gen_args = dict(rotation_range=20,             # Increase rotation range
+                     width_shift_range=0.1,         # Increase width shift range
+                     height_shift_range=0.1,        # Increase height shift range
+                     shear_range=0.1,               # Increase shear range
+                     zoom_range=0.1,                # Increase zoom range
+                     brightness_range=(0.9, 1.1),
+                     horizontal_flip=True,
+                     vertical_flip=True,            # Add vertical flipping
+                     fill_mode='nearest')
 
 
 evaluation_path = 'fake_evaluation/'
@@ -448,6 +463,66 @@ def split_json_objects(input_file, output_folder):
         with open(output_file, 'w') as outfile:
             json.dump(obj, outfile)
         file_number += 1
+
+def convert_image_for_display(image):
+    return np.uint8(image[:, :, :3])
+
+def dice_coefficient(y_true, y_pred):
+    y_true_f = tf.cast(tf.reshape(y_true, [-1]), tf.float32)
+    y_pred_f = tf.cast(tf.reshape(y_pred, [-1]), tf.float32)
+    intersection = tf.reduce_sum(y_true_f * y_pred_f)
+    return (2. * intersection + 1.) / (tf.reduce_sum(y_true_f) + tf.reduce_sum(y_pred_f) + 1.)
+
+def fine_tune_model(model, new_images_json_path, new_masks_json_path, original_images, resized_binary_masks):
+    batch_size = 8
+    # Make some layers trainable, for example, the last 5 layers
+    for layer in model.layers[-5:]:
+        layer.trainable = True
+
+    # Compile the model with a potentially different learning rate
+    optimizer = Adam(learning_rate=0.0001)
+    model.compile(optimizer=optimizer, loss=BinaryCrossentropy(), metrics=[dice_coefficient])
+
+    # Load the new dataset images and masks
+    X_new, y_new = load_images_and_masks(new_images_json_path, new_masks_json_path)
+
+    X_train_new, X_val_new, y_train_new, y_val_new = train_test_split(X_new, y_new, test_size=0.2, random_state=42)
+
+    image_datagen_new = ImageDataGenerator(**data_gen_args)
+    mask_datagen_new = ImageDataGenerator(**data_gen_args)
+
+    image_datagen_new.fit(X_train_new, augment=True, seed=42)
+    mask_datagen_new.fit(y_train_new, augment=True, seed=42)
+
+    train_generator_new = zip(image_datagen_new.flow(X_train_new, batch_size=batch_size, seed=42),
+                              mask_datagen_new.flow(y_train_new, batch_size=batch_size, seed=42))
+
+    val_generator_new = zip(image_datagen_new.flow(X_val_new, batch_size=batch_size, seed=42),
+                            mask_datagen_new.flow(y_val_new, batch_size=batch_size, seed=42))
+
+    history = model.fit(train_generator_new, steps_per_epoch=len(X_train_new) // batch_size, validation_data=val_generator_new,
+              validation_steps=len(X_val_new) // batch_size, epochs=5)
+
+    plt.plot(history.history['loss'], label='Training Loss')
+    plt.plot(history.history['val_loss'], label='Validation Loss')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.legend()
+    plt.title('Training and Validation Loss')
+
+    plt.show()
+
+    for i, (original_image, resized_mask) in enumerate(zip(original_images, resized_binary_masks)):
+        display_image = convert_image_for_display(original_image)
+        cv2.imshow(f'Original Image {i}', display_image)
+        cv2.imshow(f'Resized Binary Mask {i}', resized_mask)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+
+    # Save the fine-tuned model
+    timestamp = int(time.time())
+    model.save(f'models/model_finetuned_{timestamp}.h5')
+    return model
 
 
 

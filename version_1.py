@@ -11,7 +11,7 @@ from tensorflow.keras.callbacks import EarlyStopping
 import re
 import matplotlib.pyplot as plt
 from skimage import measure
-from v1_border import build_unet, display_json_masks, extract_wound_area, load_images_and_masks, process_image, process_images, split_json_objects, augment_data, resize_to_original, remove_padding
+from v1_border import data_gen_args, build_unet, display_json_masks, extract_wound_area, load_images_and_masks, process_image, process_images, split_json_objects, augment_data, resize_to_original, remove_padding, fine_tune_model, convert_image_for_display
 from v1_coin import detect_coin
 #from v1_processing import extract_contour_from_outlined_image
 from v1_processing import extract_contours_from_outlined_image
@@ -236,16 +236,7 @@ X, y = load_images_and_masks(images_json_path, masks_json_path)
 # Train-validation split
 X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
 
-# Data augmentation
-data_gen_args = dict(rotation_range=20,             # Increase rotation range
-                     width_shift_range=0.1,         # Increase width shift range
-                     height_shift_range=0.1,        # Increase height shift range
-                     shear_range=0.1,               # Increase shear range
-                     zoom_range=0.1,                # Increase zoom range
-                     brightness_range=(0.9, 1.1),
-                     horizontal_flip=True,
-                     vertical_flip=True,            # Add vertical flipping
-                     fill_mode='nearest')
+
 image_datagen = ImageDataGenerator(**data_gen_args)
 mask_datagen = ImageDataGenerator(**data_gen_args)
 
@@ -311,8 +302,7 @@ evaluation_images, original_dimensions, original_images = load_fake_evaluation_i
 
 # Predict and display results
 predicted_masks = model.predict(evaluation_images)
-def convert_image_for_display(image):
-    return np.uint8(image[:, :, :3])
+
 
 # Set a threshold value
 threshold = 0.6
@@ -392,68 +382,16 @@ if load_old_model.lower() == 'n':
     timestamp = int(time.time())
     model.save(f'models/wound_segmentation_model_{timestamp}.h5')
 
-
 # Fine tune option
-fine_tune_model = input("Press 'y' to fine-tune the model, or 'n' for no: ")
+fine_tune_model1 = input("Press 'y' to fine-tune the model first time, or 'n' for no: ")
 
-if fine_tune_model.lower() == 'y':
-    # Make some layers trainable, for example, the last 5 layers
-    for layer in model.layers[-5:]:
-        layer.trainable = True
+if fine_tune_model1.lower() == 'y':
+    model = fine_tune_model(model, 'fine_tune_2/', 'fine_tune_2_masks/', original_images, resized_binary_masks)
 
-    new_images_json_path = 'fine_tune_1/'
-    new_masks_json_path = 'fine_tune_1_masks/'
+fine_tune_model2 = input("Press 'y' to fine-tune the model second time, or 'n' for no: ")
 
-    # Compile the model with a potentially different learning rate
-    optimizer = Adam(learning_rate=0.0003)
-    model.compile(optimizer=optimizer, loss=BinaryCrossentropy(), metrics=[dice_coefficient])
-
-    # Load the new dataset images and masks
-    X_new, y_new = load_images_and_masks(new_images_json_path, new_masks_json_path)
-
-    X_train_new, X_val_new, y_train_new, y_val_new = train_test_split(X_new, y_new, test_size=0.2, random_state=42)
-
-    image_datagen_new = ImageDataGenerator(**data_gen_args)
-    mask_datagen_new = ImageDataGenerator(**data_gen_args)
-
-    image_datagen_new.fit(X_train_new, augment=True, seed=42)
-    mask_datagen_new.fit(y_train_new, augment=True, seed=42)
-
-    train_generator_new = zip(image_datagen_new.flow(X_train_new, batch_size=batch_size, seed=42),
-                              mask_datagen_new.flow(y_train_new, batch_size=batch_size, seed=42))
-
-    val_generator_new = zip(image_datagen_new.flow(X_val_new, batch_size=batch_size, seed=42),
-                            mask_datagen_new.flow(y_val_new, batch_size=batch_size, seed=42))
-
-    history = model.fit(train_generator_new, steps_per_epoch=len(X_train_new) // batch_size, validation_data=val_generator_new,
-              validation_steps=len(X_val_new) // batch_size, epochs=8)
-
-    plt.plot(history.history['loss'], label='Training Loss')
-    plt.plot(history.history['val_loss'], label='Validation Loss')
-    plt.xlabel('Epoch')
-    plt.ylabel('Loss')
-    plt.legend()
-    plt.title('Training and Validation Loss')
-
-    plt.show()
-
-    # Save the fine-tuned model
-    timestamp = int(time.time())
-    # Load evaluation images and display them side by side with their masks
-    evaluation_images, original_dimensions, original_images = load_fake_evaluation_images(evaluation_path, additional_input)
-
-    # Predict and display results
-    predicted_masks = model.predict(evaluation_images)
-
-    # ... Existing code for processing and displaying the predicted masks ...
-
-    for i, (original_image, resized_mask) in enumerate(zip(original_images, resized_binary_masks)):
-        display_image = convert_image_for_display(original_image)
-        cv2.imshow(f'Original Image {i}', display_image)
-        cv2.imshow(f'Resized Binary Mask {i}', resized_mask)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
-    model.save(f'models/model_finetuned_{timestamp}.h5')
+if fine_tune_model2.lower() == 'y':
+    model = fine_tune_model(model, 'fine_tune_1/', 'fine_tune_1_masks/', original_images, resized_binary_masks)
 
 
 
