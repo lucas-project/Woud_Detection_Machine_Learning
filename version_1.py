@@ -339,6 +339,7 @@ for i, binary_mask in enumerate(binary_masks):
 # Display the binary masks (Learning results)
 for i in range(len(evaluation_images)):
     display_image = convert_image_for_display(evaluation_images[i])
+    display_image = cv2.cvtColor(display_image, cv2.COLOR_BGR2RGB)  # Convert from BGR to RGB
     cv2.imshow(f'Original Image {i}', display_image)
     cv2.imshow(f'Binary Mask {i}', binary_masks[i])
     cv2.waitKey(0)
