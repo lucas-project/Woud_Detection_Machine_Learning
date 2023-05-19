@@ -13,7 +13,6 @@ import matplotlib.pyplot as plt
 from skimage import measure
 from v1_border import data_gen_args, build_unet, display_json_masks, extract_wound_area, load_images_and_masks, process_image, process_images, split_json_objects, augment_data, resize_to_original, remove_padding, fine_tune_model, convert_image_for_display
 from v1_coin import detect_coin
-#from v1_processing import extract_contour_from_outlined_image
 from v1_processing import extract_contours_from_outlined_image
 from v1_measurement import calculate_pixels_per_millimetre_ratio, get_circle_area_px, get_circle_area_mm, get_contour_size_px, get_contour_area_px, get_contour_size_mm, get_contour_area_mm
 from v1_visualisation import visualise_circle_area_mm, visualise_circle_radius_mm, visualise_circle_diameter_mm, visualise_contour_area_mm, visualise_contour_size_mm
@@ -27,9 +26,9 @@ from keras.models import load_model
 images_json_path = 'fake_wound/'
 masks_json_path = 'fake_jj/'
 evaluation_path = 'fake_evaluation/'
-input_directory = 'contour/'
-input_file = 'splited_json/1.json'
-output_folder = 'splited_json/'
+#input_directory = 'contour/' # Only used for old contour extraction function
+#input_file = 'splited_json/1.json'
+#output_folder = 'splited_json/'
 model_path = 'models/model_finetuned_1683628583_5_0.0002.h5'
 
 batch_size = 7
@@ -44,15 +43,13 @@ COIN_RADIUS_MM = 10.25 # The radius of an Australian $2 coin in millimetres
 
 # The path of the image for analysis
 # TODO: Should we change this to accept a user input?
-#input_image_path = 'contour/12.jpg'
-input_image_path = 'healing/3.jpg'
+input_image_path = 'healing/1.jpg'
 output_result_path = 'results'
 
 ### LOAD/PREPROCESS IMAGES ###
 
 # Load the image for measurements
 input_image = cv2.imread(input_image_path)
-
 
 ### MEASUREMENTS ###
 
@@ -82,11 +79,6 @@ print()
 
 ## Wound Measurement ##
 
-# Extract the wound as a binary mask from an image with a blue outline
-#_, _, _, wound_mask = extract_blue_contour(image_path) # Please note how few return values are being used
-
-## Extract the contour from the input image with a blue outline drawn around the wound
-# wound_contour = extract_contour_from_outlined_image(input_image)
 # Extract areas from the input image which have blue outlines drawn around them
 wound_contours = extract_contours_from_outlined_image(input_image)
 
@@ -124,9 +116,6 @@ for i, wound_contour in enumerate(wound_contours):
 
 	## Visualise Areas ##
 
-	## Make a copy of the original image
-	#image_areas = input_image.copy()
-
 	# Draw coin area visualisation
 	image_areas = visualise_circle_area_mm(image_areas, coin_circle, coin_area_mm, name='Scale Ref.')
 
@@ -135,11 +124,7 @@ for i, wound_contour in enumerate(wound_contours):
 
 	## Visualise Lengths ##
 
-	## Make a copy of the original image
-	#image_lengths = input_image.copy()
-
 	# Draw coin length visualisation
-	# TODO: Current visualisation is diamater. Function also exists to visualise radius. Confirm which is desirable.
 	image_lengths = visualise_circle_diameter_mm(image_lengths, coin_circle, COIN_RADIUS_MM * 2, name='Scale Ref.')
 
 	# Draw wound lengths visualisation
@@ -151,6 +136,11 @@ for i, wound_contour in enumerate(wound_contours):
 cv2.imshow('Original Image', input_image)
 cv2.imshow('Area Measurements', image_areas)
 cv2.imshow('Length Measurements', image_lengths)
+
+# Convert contours to a binary mask and display it (comment out if not needed)
+result_mask = np.zeros_like(input_image[:,:,0])
+cv2.drawContours(result_mask, wound_contours, -1, 255, -1)
+cv2.imshow('Wound Mask', result_mask)
 
 # Wait for keypress, then close all image windows
 cv2.waitKey(0)
@@ -176,10 +166,6 @@ if wound_results:
 			
 			if not output_name:
 				print('No name detected. A valid name must be used.')
-		
-		# Convert contour to binary mask
-		result_mask = np.zeros_like(input_image[:,:,0])
-		cv2.drawContours(result_mask, wound_contours, -1, 255, -1)
 		
 		# Save the results
 		save_wound_data(output_result_path, output_name, input_image, result_mask, wound_results)
@@ -214,7 +200,6 @@ if input_load.lower() == 'y':
 	if results:
 		# If results exist, plot them
 		plot_wound_data(results)
-
 
 print()
 print("Do you wish to continue to model training? (Y/N)")
