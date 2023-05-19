@@ -368,6 +368,8 @@ def extract_blue_contour(image_path):
     image = resize_with_aspect_ratio(image, target_size)
     image = pad_image(image, target_size)
 
+    original_image = image
+
     hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
     # Define the lower and upper boundaries for the blue color
@@ -404,9 +406,24 @@ def extract_blue_contour(image_path):
     pixel_ratio = pixel_count / total_pixels
 
 
-    return contour_image, pixel_count, pixel_ratio, wound_area
+    return contour_image, pixel_count, pixel_ratio, wound_area, original_image
 
+def display_binary_mask_from_outline(input_directory):
+  
 
+    for image_file in os.listdir(input_directory):
+        if image_file.endswith('.jpg'):
+            input_path = os.path.join(input_directory, image_file)
+            # output_path = os.path.join(output_directory, image_file)
+            contour_image, pixel_count, pixel_ratio, wound_area, original_image = extract_blue_contour(input_path) 
+            # cv2.imwrite(output_path, contour_image)
+       
+            # Display the output image
+            cv2.imshow(f'Original Image {image_file}', original_image)
+            cv2.imshow(f'Wound Image for {image_file}', wound_area)
+            cv2.waitKey(0)
+
+    cv2.destroyAllWindows()
 
 def process_images(directory):
     # Get all the files in the directory

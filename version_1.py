@@ -11,7 +11,7 @@ from tensorflow.keras.callbacks import EarlyStopping
 import re
 import matplotlib.pyplot as plt
 from skimage import measure
-from v1_border import data_gen_args, build_unet, display_json_masks, extract_wound_area, load_images_and_masks, process_image, process_images, split_json_objects, augment_data, resize_to_original, remove_padding, fine_tune_model, convert_image_for_display, extract_blue_contour
+from v1_border import data_gen_args, build_unet, display_json_masks, extract_wound_area, load_images_and_masks, process_image, process_images, split_json_objects, augment_data, resize_to_original, remove_padding, fine_tune_model, convert_image_for_display
 from v1_coin import detect_coin
 #from v1_processing import extract_contour_from_outlined_image
 from v1_processing import extract_contours_from_outlined_image
@@ -28,7 +28,6 @@ images_json_path = 'fake_wound/'
 masks_json_path = 'fake_jj/'
 evaluation_path = 'fake_evaluation/'
 input_directory = 'contour/'
-output_directory = 'contour_processed/'
 input_file = 'splited_json/1.json'
 output_folder = 'splited_json/'
 model_path = 'models/model_finetuned_1683628583_5_0.0002.h5'
@@ -215,34 +214,6 @@ if input_load.lower() == 'y':
 	if results:
 		# If results exist, plot them
 		plot_wound_data(results)
-
-print()
-print("Do you wish to continue to extract borders from outlined wounds? (Y/N)")
-input_continue = input()
-if input_continue.lower() != 'y':
-	quit()
-
-if not os.path.exists(output_directory):
-    os.makedirs(output_directory)
-
-# pixel coount of the wound
-pixel_counts, pixel_ratios = process_images(input_directory)
-print(pixel_counts)
-
-for image_file in os.listdir(input_directory):
-    if image_file.endswith('.jpg'):
-        input_path = os.path.join(input_directory, image_file)
-        output_path = os.path.join(output_directory, image_file)
-        contour_image, pixel_count, pixel_ratio, wound_area, original_image = extract_blue_contour(input_path) 
-        cv2.imwrite(output_path, contour_image)
-       
-        # Display the output image
-		# cv2.imshow(f'Original Image {image_file}', original_image)
-        cv2.imshow(f'Wound Image for {image_file}', wound_area)
-        cv2.waitKey(0)
-
-cv2.destroyAllWindows()
-
 
 
 print()
