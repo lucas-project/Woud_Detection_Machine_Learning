@@ -11,7 +11,7 @@ from tensorflow.keras.callbacks import EarlyStopping
 import re
 import matplotlib.pyplot as plt
 from skimage import measure
-from v1_border import data_gen_args, build_unet, display_json_masks, extract_wound_area, load_images_and_masks, process_image, process_images, split_json_objects, augment_data, resize_to_original, remove_padding, fine_tune_model, convert_image_for_display
+from v1_border import data_gen_args, build_unet, display_json_masks, extract_wound_area, load_images_and_masks, split_json_objects, augment_data, resize_to_original, remove_padding, fine_tune_model, convert_image_for_display
 from v1_coin import detect_coin
 from v1_processing import extract_contours_from_outlined_image
 from v1_measurement import calculate_pixels_per_millimetre_ratio, get_circle_area_px, get_circle_area_mm, get_contour_size_px, get_contour_area_px, get_contour_size_mm, get_contour_area_mm
@@ -245,7 +245,7 @@ else:
     model = build_unet()
     
     # Compile the model, learning rate default is 0.001
-    optimizer = Adam(learning_rate = 0.0005)
+    optimizer = Adam(learning_rate = 0.0007)
     model.compile(optimizer=optimizer, loss=BinaryCrossentropy(), metrics=[dice_coefficient])
 
 
@@ -254,19 +254,10 @@ else:
     train_generator = augment_data(X_train, y_train, batch_size, image_datagen, mask_datagen)
     val_generator = augment_data(X_val, y_val, batch_size, image_datagen, mask_datagen)
 
-
-# train_generator = zip(image_datagen.flow(X_train, batch_size=batch_size, seed=42),
-#                       mask_datagen.flow(y_train, batch_size=batch_size, seed=42))
-
-# val_generator = zip(image_datagen.flow(X_val, batch_size=batch_size, seed=42),
-#                     mask_datagen.flow(y_val, batch_size=batch_size, seed=42))
-
-
-
     early_stopping = EarlyStopping(monitor='val_loss', patience=5, verbose=1, restore_best_weights=True)
 
     history = model.fit(train_generator, steps_per_epoch=len(X_train) // batch_size, validation_data=val_generator,
-              validation_steps=len(X_val) // batch_size, epochs=8)
+              validation_steps=len(X_val) // batch_size, epochs=15)
 
     # Save the trained model
     model.save(model_path)

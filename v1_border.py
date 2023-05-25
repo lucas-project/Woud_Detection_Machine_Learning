@@ -108,7 +108,7 @@ def load_images_and_masks_worker(file, images_json_path, masks_json_path, target
     if os.path.exists(cache_file):
         img, mask = joblib.load(cache_file)
     else:
-        img, mask = load_image_and_mask(file, images_json_path, masks_json_path)
+        img, mask = load_json_and_get_mask(file, images_json_path, masks_json_path)
         if img is not None and mask is not None:
             img, mask = resize_and_pad_image_and_mask(img, mask, target_size)
             joblib.dump((img, mask), cache_file)
@@ -116,7 +116,7 @@ def load_images_and_masks_worker(file, images_json_path, masks_json_path, target
     return img, mask, file
 
     
-def load_image_and_mask(file, images_json_path, masks_json_path):
+def load_json_and_get_mask(file, images_json_path, masks_json_path):
     with open(os.path.join(masks_json_path, file[:-5] + '.json')) as f:
         mask_json = json.load(f)
 
@@ -235,7 +235,7 @@ def build_unet(input_shape=(256, 256, 4)):
     bn1 = BatchNormalization()(conv1)
     pool1 = MaxPooling2D(pool_size=(2, 2))(bn1)
 
-    conv2 = Conv2D(51, (3, 3), activation='relu', padding='same')(pool1)
+    conv2 = Conv2D(52, (3, 3), activation='relu', padding='same')(pool1)
     bn2 = BatchNormalization()(conv2)
     pool2 = MaxPooling2D(pool_size=(2, 2))(bn2)
 
@@ -251,7 +251,7 @@ def build_unet(input_shape=(256, 256, 4)):
     bn7 = BatchNormalization()(conv7)
 
     up8 = Concatenate()([UpSampling2D(size=(2, 2))(bn7), conv2])
-    conv8 = Conv2D(51, (3, 3), activation='relu', padding='same')(up8)
+    conv8 = Conv2D(52, (3, 3), activation='relu', padding='same')(up8)
     bn8 = BatchNormalization()(conv8)
 
     up9 = Concatenate()([UpSampling2D(size=(2, 2))(bn8), conv1])
